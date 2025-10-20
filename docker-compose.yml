@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Banco de dados principal
+  postgres:
+    image: postgres:16-alpine
+    container_name: zoapets-postgres
+    environment:
+      POSTGRES_DB: zoapets_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - zoapets-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Cache e message queue
+  redis:
+    image: redis:7-alpine
+    container_name: zoapets-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - zoapets-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # MinIO - Object storage (S3-compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: zoapets-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    volumes:
+      - minio_data:/data
+    networks:
+      - zoapets-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Adminer - Database management UI (opcional, para desenvolvimento)
+  adminer:
+    image: adminer:latest
+    container_name: zoapets-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - zoapets-network
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+
+  # RedisInsight - Redis management UI (opcional)
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: zoapets-redis-insight
+    ports:
+      - "8001:8001"
+    networks:
+      - zoapets-network
+    volumes:
+      - redis_insight_data:/db
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  redis_insight_data:
+    driver: local
+
+networks:
+  zoapets-network:
+    driver: bridge
