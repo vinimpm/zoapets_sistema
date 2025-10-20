@@ -274,16 +274,16 @@ docker-compose restart postgres
 ```bash
 cd backend
 
-# Modo desenvolvimento (com hot-reload)
+# Modo desenvolvimento (com hot-reload) - COMANDO PRINCIPAL
 npm run start:dev
 
-# Modo debug
+# Modo debug (com debugger)
 npm run start:debug
 
 # Build de produção
 npm run build
 
-# Rodar em produção
+# Rodar build de produção
 npm run start:prod
 ```
 
