@@ -1,16 +1,27 @@
 import apiClient from '@/lib/api-client';
 
+export interface EnderecoCompleto {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+
 export interface Tutor {
   id: string;
-  nome: string;
-  cpf?: string;
+  nomeCompleto: string;
+  cpf: string;
   rg?: string;
-  telefone?: string;
-  celular?: string;
-  email?: string;
-  endereco?: string;
+  email: string;
+  telefonePrincipal: string;
+  telefoneSecundario?: string;
+  enderecoCompleto?: EnderecoCompleto;
+  dataNascimento?: string;
+  profissao?: string;
   observacoes?: string;
-  ativo: boolean;
   createdAt: string;
   updatedAt: string;
   pets?: Array<{
@@ -21,13 +32,15 @@ export interface Tutor {
 }
 
 export interface CreateTutorDto {
-  nome: string;
-  cpf?: string;
+  nomeCompleto: string;
+  cpf: string;
   rg?: string;
-  telefone?: string;
-  celular?: string;
-  email?: string;
-  endereco?: string;
+  email: string;
+  telefonePrincipal: string;
+  telefoneSecundario?: string;
+  enderecoCompleto?: EnderecoCompleto;
+  dataNascimento?: string;
+  profissao?: string;
   observacoes?: string;
 }
 

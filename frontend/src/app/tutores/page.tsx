@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { tutoresService, type Tutor, type CreateTutorDto } from '@/services/tutores.service';
+import { tutoresService, type Tutor, type CreateTutorDto, type EnderecoCompleto } from '@/services/tutores.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,10 +23,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Search, Plus, Edit, Trash2, Phone, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { maskCPF, maskRG, maskPhone, maskCellPhone, maskCEP, unmask } from '@/lib/masks';
+
+const ESTADOS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
 
 export default function TutoresPage() {
   const queryClient = useQueryClient();
@@ -36,13 +50,23 @@ export default function TutoresPage() {
   const [editingTutor, setEditingTutor] = useState<Tutor | null>(null);
   const [deletingTutor, setDeletingTutor] = useState<Tutor | null>(null);
   const [formData, setFormData] = useState<CreateTutorDto>({
-    nome: '',
+    nomeCompleto: '',
     cpf: '',
     rg: '',
-    telefone: '',
-    celular: '',
     email: '',
-    endereco: '',
+    telefonePrincipal: '',
+    telefoneSecundario: '',
+    enderecoCompleto: {
+      cep: '',
+      logradouro: '',
+      numero: '',
+      complemento: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+    },
+    dataNascimento: '',
+    profissao: '',
     observacoes: '',
   });
 
@@ -54,10 +78,24 @@ export default function TutoresPage() {
 
   // Mutation para criar/editar
   const saveMutation = useMutation({
-    mutationFn: (data: CreateTutorDto) =>
-      editingTutor
-        ? tutoresService.update(editingTutor.id, data)
-        : tutoresService.create(data),
+    mutationFn: (data: CreateTutorDto) => {
+      // Remove máscaras antes de enviar
+      const cleanData = {
+        ...data,
+        cpf: unmask(data.cpf),
+        rg: data.rg ? unmask(data.rg) : undefined,
+        telefonePrincipal: unmask(data.telefonePrincipal),
+        telefoneSecundario: data.telefoneSecundario ? unmask(data.telefoneSecundario) : undefined,
+        enderecoCompleto: data.enderecoCompleto ? {
+          ...data.enderecoCompleto,
+          cep: unmask(data.enderecoCompleto.cep),
+        } : undefined,
+      };
+
+      return editingTutor
+        ? tutoresService.update(editingTutor.id, cleanData)
+        : tutoresService.create(cleanData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tutores'] });
       toast.success(editingTutor ? 'Tutor atualizado!' : 'Tutor criado!');
@@ -86,25 +124,45 @@ export default function TutoresPage() {
     if (tutor) {
       setEditingTutor(tutor);
       setFormData({
-        nome: tutor.nome,
-        cpf: tutor.cpf || '',
-        rg: tutor.rg || '',
-        telefone: tutor.telefone || '',
-        celular: tutor.celular || '',
+        nomeCompleto: tutor.nomeCompleto,
+        cpf: maskCPF(tutor.cpf) || '',
+        rg: tutor.rg ? maskRG(tutor.rg) : '',
         email: tutor.email || '',
-        endereco: tutor.endereco || '',
+        telefonePrincipal: tutor.telefonePrincipal ? maskPhone(tutor.telefonePrincipal) : '',
+        telefoneSecundario: tutor.telefoneSecundario ? maskCellPhone(tutor.telefoneSecundario) : '',
+        enderecoCompleto: tutor.enderecoCompleto || {
+          cep: '',
+          logradouro: '',
+          numero: '',
+          complemento: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
+        },
+        dataNascimento: tutor.dataNascimento || '',
+        profissao: tutor.profissao || '',
         observacoes: tutor.observacoes || '',
       });
     } else {
       setEditingTutor(null);
       setFormData({
-        nome: '',
+        nomeCompleto: '',
         cpf: '',
         rg: '',
-        telefone: '',
-        celular: '',
         email: '',
-        endereco: '',
+        telefonePrincipal: '',
+        telefoneSecundario: '',
+        enderecoCompleto: {
+          cep: '',
+          logradouro: '',
+          numero: '',
+          complemento: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
+        },
+        dataNascimento: '',
+        profissao: '',
         observacoes: '',
       });
     }
@@ -129,6 +187,35 @@ export default function TutoresPage() {
   const confirmDelete = () => {
     if (deletingTutor) {
       deleteMutation.mutate(deletingTutor.id);
+    }
+  };
+
+  const buscarCEP = async (cep: string) => {
+    const cepLimpo = unmask(cep);
+    if (cepLimpo.length !== 8) return;
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await response.json();
+
+      if (!data.erro) {
+        setFormData({
+          ...formData,
+          enderecoCompleto: {
+            ...formData.enderecoCompleto!,
+            cep: maskCEP(cepLimpo),
+            logradouro: data.logradouro || '',
+            bairro: data.bairro || '',
+            cidade: data.localidade || '',
+            estado: data.uf || '',
+          },
+        });
+        toast.success('CEP encontrado!');
+      } else {
+        toast.error('CEP não encontrado');
+      }
+    } catch (error) {
+      toast.error('Erro ao buscar CEP');
     }
   };
 
@@ -174,27 +261,26 @@ export default function TutoresPage() {
                   <TableHead>Contato</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Pets</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tutores.map((tutor) => (
                   <TableRow key={tutor.id}>
-                    <TableCell className="font-medium">{tutor.nome}</TableCell>
-                    <TableCell>{tutor.cpf || '-'}</TableCell>
+                    <TableCell className="font-medium">{tutor.nomeCompleto}</TableCell>
+                    <TableCell>{maskCPF(tutor.cpf) || '-'}</TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
-                        {tutor.telefone && (
+                        {tutor.telefonePrincipal && (
                           <div className="flex items-center gap-1 text-sm">
                             <Phone className="h-3 w-3" />
-                            {tutor.telefone}
+                            {maskPhone(tutor.telefonePrincipal)}
                           </div>
                         )}
-                        {tutor.celular && (
+                        {tutor.telefoneSecundario && (
                           <div className="flex items-center gap-1 text-sm">
                             <Phone className="h-3 w-3" />
-                            {tutor.celular}
+                            {maskCellPhone(tutor.telefoneSecundario)}
                           </div>
                         )}
                       </div>
@@ -213,11 +299,6 @@ export default function TutoresPage() {
                       ) : (
                         <span className="text-muted-foreground text-sm">Nenhum</span>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={tutor.ativo ? 'success' : 'destructive'}>
-                        {tutor.ativo ? 'Ativo' : 'Inativo'}
-                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -247,7 +328,7 @@ export default function TutoresPage() {
 
       {/* Dialog de Criar/Editar */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingTutor ? 'Editar Tutor' : 'Novo Tutor'}
@@ -257,79 +338,236 @@ export default function TutoresPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="nome">Nome *</Label>
-                  <Input
-                    id="nome"
-                    value={formData.nome}
-                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="cpf">CPF</Label>
-                  <Input
-                    id="cpf"
-                    value={formData.cpf}
-                    onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                    placeholder="000.000.000-00"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="rg">RG</Label>
-                  <Input
-                    id="rg"
-                    value={formData.rg}
-                    onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="telefone">Telefone</Label>
-                  <Input
-                    id="telefone"
-                    value={formData.telefone}
-                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                    placeholder="(00) 0000-0000"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="celular">Celular</Label>
-                  <Input
-                    id="celular"
-                    value={formData.celular}
-                    onChange={(e) => setFormData({ ...formData, celular: e.target.value })}
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
-              </div>
-
+            <div className="grid gap-6 py-4">
+              {/* Dados Pessoais */}
               <div>
-                <Label htmlFor="endereco">Endereço</Label>
-                <Textarea
-                  id="endereco"
-                  value={formData.endereco}
-                  onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                  rows={2}
-                />
+                <h3 className="text-lg font-semibold mb-4">Dados Pessoais</h3>
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="nomeCompleto">Nome Completo *</Label>
+                      <Input
+                        id="nomeCompleto"
+                        value={formData.nomeCompleto}
+                        onChange={(e) => setFormData({ ...formData, nomeCompleto: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cpf">CPF *</Label>
+                      <Input
+                        id="cpf"
+                        value={formData.cpf}
+                        onChange={(e) => setFormData({ ...formData, cpf: maskCPF(e.target.value) })}
+                        placeholder="000.000.000-00"
+                        maxLength={14}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="rg">RG</Label>
+                      <Input
+                        id="rg"
+                        value={formData.rg}
+                        onChange={(e) => setFormData({ ...formData, rg: maskRG(e.target.value) })}
+                        placeholder="00.000.000-0"
+                        maxLength={12}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="dataNascimento">Data de Nascimento</Label>
+                      <Input
+                        id="dataNascimento"
+                        type="date"
+                        value={formData.dataNascimento}
+                        onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="profissao">Profissão</Label>
+                      <Input
+                        id="profissao"
+                        value={formData.profissao}
+                        onChange={(e) => setFormData({ ...formData, profissao: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
+              {/* Contato */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Contato</h3>
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="telefonePrincipal">Telefone Principal *</Label>
+                      <Input
+                        id="telefonePrincipal"
+                        value={formData.telefonePrincipal}
+                        onChange={(e) => setFormData({ ...formData, telefonePrincipal: maskPhone(e.target.value) })}
+                        placeholder="(00) 0000-0000"
+                        maxLength={14}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="telefoneSecundario">Celular</Label>
+                      <Input
+                        id="telefoneSecundario"
+                        value={formData.telefoneSecundario}
+                        onChange={(e) => setFormData({ ...formData, telefoneSecundario: maskCellPhone(e.target.value) })}
+                        placeholder="(00) 00000-0000"
+                        maxLength={15}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Endereço */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Endereço</h3>
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="cep">CEP</Label>
+                      <Input
+                        id="cep"
+                        value={formData.enderecoCompleto?.cep}
+                        onChange={(e) => {
+                          const cep = maskCEP(e.target.value);
+                          setFormData({
+                            ...formData,
+                            enderecoCompleto: {
+                              ...formData.enderecoCompleto!,
+                              cep,
+                            },
+                          });
+                        }}
+                        onBlur={(e) => buscarCEP(e.target.value)}
+                        placeholder="00000-000"
+                        maxLength={9}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="logradouro">Logradouro</Label>
+                      <Input
+                        id="logradouro"
+                        value={formData.enderecoCompleto?.logradouro}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          enderecoCompleto: {
+                            ...formData.enderecoCompleto!,
+                            logradouro: e.target.value,
+                          },
+                        })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor="numero">Número</Label>
+                      <Input
+                        id="numero"
+                        value={formData.enderecoCompleto?.numero}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          enderecoCompleto: {
+                            ...formData.enderecoCompleto!,
+                            numero: e.target.value,
+                          },
+                        })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="complemento">Complemento</Label>
+                      <Input
+                        id="complemento"
+                        value={formData.enderecoCompleto?.complemento}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          enderecoCompleto: {
+                            ...formData.enderecoCompleto!,
+                            complemento: e.target.value,
+                          },
+                        })}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="bairro">Bairro</Label>
+                      <Input
+                        id="bairro"
+                        value={formData.enderecoCompleto?.bairro}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          enderecoCompleto: {
+                            ...formData.enderecoCompleto!,
+                            bairro: e.target.value,
+                          },
+                        })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2">
+                      <Label htmlFor="cidade">Cidade</Label>
+                      <Input
+                        id="cidade"
+                        value={formData.enderecoCompleto?.cidade}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          enderecoCompleto: {
+                            ...formData.enderecoCompleto!,
+                            cidade: e.target.value,
+                          },
+                        })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="estado">Estado</Label>
+                      <Select
+                        value={formData.enderecoCompleto?.estado}
+                        onValueChange={(value) => setFormData({
+                          ...formData,
+                          enderecoCompleto: {
+                            ...formData.enderecoCompleto!,
+                            estado: value,
+                          },
+                        })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="UF" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ESTADOS.map((estado) => (
+                            <SelectItem key={estado} value={estado}>
+                              {estado}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Observações */}
               <div>
                 <Label htmlFor="observacoes">Observações</Label>
                 <Textarea
@@ -362,7 +600,7 @@ export default function TutoresPage() {
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir o tutor <strong>{deletingTutor?.nome}</strong>?
+              Tem certeza que deseja excluir o tutor <strong>{deletingTutor?.nomeCompleto}</strong>?
               Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
