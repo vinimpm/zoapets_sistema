@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { RolesService } from './roles.service';
+import { PermissionsSeedService } from './permissions-seed.service';
 import { CreateRoleDto, UpdateRoleDto } from './dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -8,7 +9,10 @@ import { Roles } from '../../common/decorators/roles.decorator';
 @Controller('roles')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class RolesController {
-  constructor(private readonly rolesService: RolesService) {}
+  constructor(
+    private readonly rolesService: RolesService,
+    private readonly permissionsSeedService: PermissionsSeedService,
+  ) {}
 
   @Post()
   @Roles('Administrador')
@@ -26,6 +30,18 @@ export class RolesController {
   @Roles('Administrador', 'Gerente')
   findAllPermissions(@Req() req: any) {
     return this.rolesService.findAllPermissions(req.tenantSlug);
+  }
+
+  @Post('seed-permissions')
+  @Roles('Administrador')
+  async seedPermissions(@Req() req: any) {
+    await this.permissionsSeedService.seedPermissionsForTenant(req.tenantSlug);
+    const totalPermissions = this.permissionsSeedService.getTotalPermissionsCount();
+    return {
+      message: 'Permissões sincronizadas com sucesso',
+      tenant: req.tenantSlug,
+      totalPermissions,
+    };
   }
 
   @Get(':id')

@@ -13,6 +13,9 @@ export class Role {
   @Column({ type: 'text', nullable: true })
   descricao: string;
 
+  @Column({ name: 'tenant_slug', type: 'varchar', length: 50 })
+  tenantSlug: string;
+
   @ManyToMany(() => User, user => user.roles)
   users: User[];
 

@@ -22,6 +22,7 @@ import { FinanceiroModule } from './modules/financeiro/financeiro.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { PublicApiModule } from './modules/public-api/public-api.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { RolesModule } from './modules/roles/roles.module';
     ApiKeysModule,
     PublicApiModule,
     RolesModule,
+    TenantsModule,
   ],
   providers: [
     {
@@ -79,3 +81,4 @@ export class AppModule implements NestModule {
       .forRoutes('public/*'); // Rate limiting para rotas públicas
   }
 }
+ 
