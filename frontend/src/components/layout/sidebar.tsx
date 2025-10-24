@@ -57,6 +57,11 @@ const menuItems: MenuItem[] = [
     icon: MessageSquare,
   },
   {
+    title: 'Agendamentos',
+    href: '/agendamentos',
+    icon: Calendar,
+  },
+  {
     title: 'Clínico',
     icon: Activity,
     submenu: [
@@ -74,11 +79,6 @@ const menuItems: MenuItem[] = [
       { title: 'Pets', href: '/pets', icon: Dog },
       { title: 'Tutores', href: '/tutores', icon: Users },
     ],
-  },
-  {
-    title: 'Agendamentos',
-    href: '/agendamentos',
-    icon: Calendar,
   },
   {
     title: 'Financeiro',
