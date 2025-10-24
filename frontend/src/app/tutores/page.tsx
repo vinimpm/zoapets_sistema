@@ -301,13 +301,15 @@ export default function TutoresPage() {
                     </TableCell>
                     <TableCell>
                       {tutor.pets && tutor.pets.length > 0 ? (
-                        <TooltipProvider>
+                        <TooltipProvider delayDuration={200}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 transition-colors">
-                                <PawPrint className="h-3 w-3 mr-1" />
-                                {tutor.pets.length}
-                              </Badge>
+                              <div className="inline-flex">
+                                <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 transition-colors">
+                                  <PawPrint className="h-3 w-3 mr-1" />
+                                  {tutor.pets.length}
+                                </Badge>
+                              </div>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-xs">
                               <div className="space-y-1">
