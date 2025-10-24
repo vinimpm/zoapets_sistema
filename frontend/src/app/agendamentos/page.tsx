@@ -45,6 +45,9 @@ export default function AgendamentosPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [petSearch, setPetSearch] = useState('');
+  const [showPetSuggestions, setShowPetSuggestions] = useState(false);
+  const [selectedPetName, setSelectedPetName] = useState('');
   const [formData, setFormData] = useState<CreateAgendamentoDto>({
     petId: '',
     veterinarioId: user?.id || '',
@@ -63,10 +66,11 @@ export default function AgendamentosPage() {
     queryFn: () => agendamentosService.findByPeriodo(startDate, endDate),
   });
 
-  // Query para pets (select)
+  // Query para pets (autocomplete)
   const { data: pets = [] } = useQuery({
-    queryKey: ['pets'],
-    queryFn: () => petsService.findAll(),
+    queryKey: ['pets', petSearch],
+    queryFn: () => petsService.findAll(petSearch),
+    enabled: showPetSuggestions || petSearch.length > 0,
   });
 
   // Mutation para criar
@@ -124,10 +128,25 @@ export default function AgendamentosPage() {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
+    setPetSearch('');
+    setSelectedPetName('');
+  };
+
+  const handleSelectPet = (pet: any) => {
+    setFormData({ ...formData, petId: pet.id });
+    setSelectedPetName(`${pet.nome} (${pet.especie})`);
+    setPetSearch('');
+    setShowPetSuggestions(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.petId) {
+      toast.error('Por favor, selecione um pet');
+      return;
+    }
+
     createMutation.mutate(formData);
   };
 
@@ -368,24 +387,52 @@ export default function AgendamentosPage() {
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="petId">Pet *</Label>
-                  <Select
+                <div className="relative">
+                  <Label htmlFor="petSearch">Pet *</Label>
+                  <Input
+                    id="petSearch"
+                    placeholder={selectedPetName || "Digite para buscar o pet..."}
+                    value={petSearch}
+                    onChange={(e) => {
+                      setPetSearch(e.target.value);
+                      setShowPetSuggestions(true);
+                      if (!e.target.value) {
+                        setFormData({ ...formData, petId: '' });
+                        setSelectedPetName('');
+                      }
+                    }}
+                    onFocus={() => setShowPetSuggestions(true)}
+                    className={selectedPetName ? 'font-medium' : ''}
+                  />
+                  <input
+                    type="hidden"
                     value={formData.petId}
-                    onValueChange={(value) => setFormData({ ...formData, petId: value })}
                     required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o pet" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  />
+                  {showPetSuggestions && petSearch.length > 0 && pets.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {pets.map((pet) => (
-                        <SelectItem key={pet.id} value={pet.id}>
-                          {pet.nome} ({pet.especie})
-                        </SelectItem>
+                        <button
+                          key={pet.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                          onClick={() => handleSelectPet(pet)}
+                        >
+                          <div className="font-medium">{pet.nome} ({pet.especie})</div>
+                          {pet.tutor && (
+                            <div className="text-sm text-gray-500">
+                              Tutor: {pet.tutor.nomeCompleto}
+                            </div>
+                          )}
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
+                  {selectedPetName && (
+                    <div className="text-sm text-green-600 mt-1">
+                      ✓ {selectedPetName}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="tipo">Tipo *</Label>

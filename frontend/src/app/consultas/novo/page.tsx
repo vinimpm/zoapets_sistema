@@ -28,6 +28,18 @@ export default function NovaConsultaPage() {
   const router = useRouter();
   const { user } = useAuthStore();
 
+  const [petSearch, setPetSearch] = useState('');
+  const [showPetSuggestions, setShowPetSuggestions] = useState(false);
+  const [selectedPetName, setSelectedPetName] = useState('');
+
+  const [tutorSearch, setTutorSearch] = useState('');
+  const [showTutorSuggestions, setShowTutorSuggestions] = useState(false);
+  const [selectedTutorName, setSelectedTutorName] = useState('');
+
+  const [veterinarioSearch, setVeterinarioSearch] = useState('');
+  const [showVeterinarioSuggestions, setShowVeterinarioSuggestions] = useState(false);
+  const [selectedVeterinarioName, setSelectedVeterinarioName] = useState('');
+
   const [formData, setFormData] = useState<CreateConsultaDto>({
     petId: '',
     tutorId: '',
@@ -40,18 +52,21 @@ export default function NovaConsultaPage() {
 
   // Queries
   const { data: pets = [] } = useQuery({
-    queryKey: ['pets'],
-    queryFn: () => petsService.findAll(),
+    queryKey: ['pets', petSearch],
+    queryFn: () => petsService.findAll(petSearch),
+    enabled: showPetSuggestions || petSearch.length > 0,
   });
 
   const { data: tutores = [] } = useQuery({
-    queryKey: ['tutores'],
-    queryFn: () => tutoresService.findAll(),
+    queryKey: ['tutores', tutorSearch],
+    queryFn: () => tutoresService.findAll(tutorSearch),
+    enabled: showTutorSuggestions || tutorSearch.length > 0,
   });
 
   const { data: veterinarios = [] } = useQuery({
-    queryKey: ['users-veterinarios'],
-    queryFn: () => usersService.findAll(),
+    queryKey: ['users-veterinarios', veterinarioSearch],
+    queryFn: () => usersService.findAll(veterinarioSearch),
+    enabled: showVeterinarioSuggestions || veterinarioSearch.length > 0,
   });
 
   // Mutation
@@ -67,6 +82,36 @@ export default function NovaConsultaPage() {
     },
   });
 
+  const handleSelectPet = (pet: any) => {
+    setFormData({
+      ...formData,
+      petId: pet.id,
+      tutorId: pet.tutorId || '',
+    });
+    setSelectedPetName(`${pet.nome} (${pet.especie})`);
+    setPetSearch('');
+    setShowPetSuggestions(false);
+
+    // Auto-select tutor
+    if (pet.tutor) {
+      setSelectedTutorName(pet.tutor.nomeCompleto);
+    }
+  };
+
+  const handleSelectTutor = (tutor: any) => {
+    setFormData({ ...formData, tutorId: tutor.id });
+    setSelectedTutorName(tutor.nomeCompleto);
+    setTutorSearch('');
+    setShowTutorSuggestions(false);
+  };
+
+  const handleSelectVeterinario = (vet: any) => {
+    setFormData({ ...formData, veterinarioId: vet.id });
+    setSelectedVeterinarioName(vet.nome);
+    setVeterinarioSearch('');
+    setShowVeterinarioSuggestions(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -76,15 +121,6 @@ export default function NovaConsultaPage() {
     }
 
     createMutation.mutate(formData);
-  };
-
-  const handlePetChange = (petId: string) => {
-    const selectedPet = pets.find(p => p.id === petId);
-    setFormData({
-      ...formData,
-      petId,
-      tutorId: selectedPet?.tutorId || '',
-    });
   };
 
   return (
@@ -107,52 +143,132 @@ export default function NovaConsultaPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="petId">Paciente *</Label>
-                <Select value={formData.petId} onValueChange={handlePetChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o pet" />
-                  </SelectTrigger>
-                  <SelectContent>
+              <div className="relative space-y-2">
+                <Label htmlFor="petSearch">Paciente *</Label>
+                <Input
+                  id="petSearch"
+                  placeholder={selectedPetName || "Digite para buscar o pet..."}
+                  value={petSearch}
+                  onChange={(e) => {
+                    setPetSearch(e.target.value);
+                    setShowPetSuggestions(true);
+                    if (!e.target.value) {
+                      setFormData({ ...formData, petId: '' });
+                      setSelectedPetName('');
+                    }
+                  }}
+                  onFocus={() => setShowPetSuggestions(true)}
+                  className={selectedPetName ? 'font-medium' : ''}
+                />
+                <input type="hidden" value={formData.petId} required />
+                {showPetSuggestions && petSearch.length > 0 && pets.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                     {pets.map((pet) => (
-                      <SelectItem key={pet.id} value={pet.id}>
-                        {pet.nome} - {pet.especie}
-                      </SelectItem>
+                      <button
+                        key={pet.id}
+                        type="button"
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                        onClick={() => handleSelectPet(pet)}
+                      >
+                        <div className="font-medium">{pet.nome} ({pet.especie})</div>
+                        {pet.tutor && (
+                          <div className="text-sm text-gray-500">
+                            Tutor: {pet.tutor.nomeCompleto}
+                          </div>
+                        )}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
+                {selectedPetName && (
+                  <div className="text-sm text-green-600 mt-1">
+                    ✓ {selectedPetName}
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tutorId">Tutor *</Label>
-                <Select value={formData.tutorId} onValueChange={(value) => setFormData({ ...formData, tutorId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tutor" />
-                  </SelectTrigger>
-                  <SelectContent>
+              <div className="relative space-y-2">
+                <Label htmlFor="tutorSearch">Tutor *</Label>
+                <Input
+                  id="tutorSearch"
+                  placeholder={selectedTutorName || "Digite para buscar o tutor..."}
+                  value={tutorSearch}
+                  onChange={(e) => {
+                    setTutorSearch(e.target.value);
+                    setShowTutorSuggestions(true);
+                    if (!e.target.value) {
+                      setFormData({ ...formData, tutorId: '' });
+                      setSelectedTutorName('');
+                    }
+                  }}
+                  onFocus={() => setShowTutorSuggestions(true)}
+                  className={selectedTutorName ? 'font-medium' : ''}
+                />
+                <input type="hidden" value={formData.tutorId} required />
+                {showTutorSuggestions && tutorSearch.length > 0 && tutores.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                     {tutores.map((tutor) => (
-                      <SelectItem key={tutor.id} value={tutor.id}>
-                        {tutor.nome}
-                      </SelectItem>
+                      <button
+                        key={tutor.id}
+                        type="button"
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                        onClick={() => handleSelectTutor(tutor)}
+                      >
+                        <div className="font-medium">{tutor.nomeCompleto}</div>
+                        <div className="text-sm text-gray-500">
+                          CPF: {tutor.cpf} {tutor.telefonePrincipal && `• ${tutor.telefonePrincipal}`}
+                        </div>
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
+                {selectedTutorName && (
+                  <div className="text-sm text-green-600 mt-1">
+                    ✓ {selectedTutorName}
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="veterinarioId">Veterinário *</Label>
-                <Select value={formData.veterinarioId} onValueChange={(value) => setFormData({ ...formData, veterinarioId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o veterinário" />
-                  </SelectTrigger>
-                  <SelectContent>
+              <div className="relative space-y-2">
+                <Label htmlFor="veterinarioSearch">Veterinário *</Label>
+                <Input
+                  id="veterinarioSearch"
+                  placeholder={selectedVeterinarioName || "Digite para buscar o veterinário..."}
+                  value={veterinarioSearch}
+                  onChange={(e) => {
+                    setVeterinarioSearch(e.target.value);
+                    setShowVeterinarioSuggestions(true);
+                    if (!e.target.value) {
+                      setFormData({ ...formData, veterinarioId: '' });
+                      setSelectedVeterinarioName('');
+                    }
+                  }}
+                  onFocus={() => setShowVeterinarioSuggestions(true)}
+                  className={selectedVeterinarioName ? 'font-medium' : ''}
+                />
+                <input type="hidden" value={formData.veterinarioId} required />
+                {showVeterinarioSuggestions && veterinarioSearch.length > 0 && veterinarios.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                     {veterinarios.map((vet) => (
-                      <SelectItem key={vet.id} value={vet.id}>
-                        {vet.nome}
-                      </SelectItem>
+                      <button
+                        key={vet.id}
+                        type="button"
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                        onClick={() => handleSelectVeterinario(vet)}
+                      >
+                        <div className="font-medium">{vet.nome}</div>
+                        <div className="text-sm text-gray-500">
+                          Email: {vet.email}
+                        </div>
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
+                {selectedVeterinarioName && (
+                  <div className="text-sm text-green-600 mt-1">
+                    ✓ {selectedVeterinarioName}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
