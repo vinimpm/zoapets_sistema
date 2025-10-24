@@ -33,6 +33,9 @@ export class Internacao {
   @Column({ name: 'diagnostico_inicial', type: 'text', nullable: true })
   diagnosticoInicial: string;
 
+  @Column({ type: 'text', nullable: true })
+  diagnostico: string;
+
   @Column()
   tipo: string; // clinica, cirurgica, urgencia
 
