@@ -1,10 +1,21 @@
 import apiClient from '@/lib/api-client';
 
+export interface EnderecoCompleto {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+
 export interface Configuracao {
   id: string;
   nomeClinica: string;
   logoUrl?: string;
   endereco?: string;
+  enderecoCompleto?: EnderecoCompleto;
   telefone?: string;
   email?: string;
   horarioAtendimento?: string;
@@ -24,6 +35,7 @@ export interface UpdateConfiguracaoDto {
   nomeClinica?: string;
   logoUrl?: string;
   endereco?: string;
+  enderecoCompleto?: EnderecoCompleto;
   telefone?: string;
   email?: string;
   horarioAtendimento?: string;

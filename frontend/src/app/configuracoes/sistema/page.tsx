@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   configuracoesService,
   type UpdateConfiguracaoDto,
+  type EnderecoCompleto,
 } from '@/services/configuracoes.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,14 +14,36 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Building2, Mail, Phone, Globe, Clock, Bell, Facebook, Instagram, MessageCircle, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { maskCNPJ, maskPhone, maskCellPhone, maskCEP, unmask } from '@/lib/masks';
+
+const ESTADOS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
 
 export default function ConfiguracoesSistemaPage() {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<UpdateConfiguracaoDto>({
     nomeClinica: '',
-    endereco: '',
+    enderecoCompleto: {
+      cep: '',
+      logradouro: '',
+      numero: '',
+      complemento: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+    },
     telefone: '',
     email: '',
     horarioAtendimento: '',
@@ -45,13 +68,21 @@ export default function ConfiguracoesSistemaPage() {
     if (configuracao) {
       setFormData({
         nomeClinica: configuracao.nomeClinica,
-        endereco: configuracao.endereco || '',
-        telefone: configuracao.telefone || '',
+        enderecoCompleto: configuracao.enderecoCompleto || {
+          cep: '',
+          logradouro: '',
+          numero: '',
+          complemento: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
+        },
+        telefone: configuracao.telefone ? maskPhone(configuracao.telefone) : '',
         email: configuracao.email || '',
         horarioAtendimento: configuracao.horarioAtendimento || '',
-        cnpj: configuracao.cnpj || '',
+        cnpj: configuracao.cnpj ? maskCNPJ(configuracao.cnpj) : '',
         siteUrl: configuracao.siteUrl || '',
-        whatsapp: configuracao.whatsapp || '',
+        whatsapp: configuracao.whatsapp ? maskCellPhone(configuracao.whatsapp) : '',
         facebookUrl: configuracao.facebookUrl || '',
         instagramUrl: configuracao.instagramUrl || '',
         notificacoesEmail: configuracao.notificacoesEmail,
@@ -63,7 +94,20 @@ export default function ConfiguracoesSistemaPage() {
 
   // Mutation para atualizar
   const updateMutation = useMutation({
-    mutationFn: (data: UpdateConfiguracaoDto) => configuracoesService.update(data),
+    mutationFn: (data: UpdateConfiguracaoDto) => {
+      // Remove máscaras antes de enviar
+      const cleanData = {
+        ...data,
+        cnpj: data.cnpj ? unmask(data.cnpj) : undefined,
+        telefone: data.telefone ? unmask(data.telefone) : undefined,
+        whatsapp: data.whatsapp ? unmask(data.whatsapp) : undefined,
+        enderecoCompleto: data.enderecoCompleto ? {
+          ...data.enderecoCompleto,
+          cep: unmask(data.enderecoCompleto.cep),
+        } : undefined,
+      };
+      return configuracoesService.update(cleanData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracoes'] });
       toast.success('Configurações atualizadas com sucesso!');
@@ -134,21 +178,137 @@ export default function ConfiguracoesSistemaPage() {
                     <Input
                       id="cnpj"
                       value={formData.cnpj}
-                      onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, cnpj: maskCNPJ(e.target.value) })}
                       placeholder="00.000.000/0000-00"
+                      maxLength={18}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="endereco">Endereço Completo</Label>
-                  <Textarea
-                    id="endereco"
-                    value={formData.endereco}
-                    onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                    rows={3}
-                    placeholder="Rua, número, bairro, cidade, estado, CEP"
-                  />
+                  <Label>Endereço Completo</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                    <div>
+                      <Input
+                        placeholder="CEP"
+                        value={formData.enderecoCompleto?.cep}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            enderecoCompleto: {
+                              ...formData.enderecoCompleto!,
+                              cep: maskCEP(e.target.value),
+                            },
+                          })
+                        }
+                        maxLength={9}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        placeholder="Logradouro"
+                        value={formData.enderecoCompleto?.logradouro}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            enderecoCompleto: {
+                              ...formData.enderecoCompleto!,
+                              logradouro: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
+                    <div>
+                      <Input
+                        placeholder="Número"
+                        value={formData.enderecoCompleto?.numero}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            enderecoCompleto: {
+                              ...formData.enderecoCompleto!,
+                              numero: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        placeholder="Complemento"
+                        value={formData.enderecoCompleto?.complemento}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            enderecoCompleto: {
+                              ...formData.enderecoCompleto!,
+                              complemento: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        placeholder="Bairro"
+                        value={formData.enderecoCompleto?.bairro}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            enderecoCompleto: {
+                              ...formData.enderecoCompleto!,
+                              bairro: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                    <div className="md:col-span-2">
+                      <Input
+                        placeholder="Cidade"
+                        value={formData.enderecoCompleto?.cidade}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            enderecoCompleto: {
+                              ...formData.enderecoCompleto!,
+                              cidade: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Select
+                        value={formData.enderecoCompleto?.estado}
+                        onValueChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            enderecoCompleto: {
+                              ...formData.enderecoCompleto!,
+                              estado: value,
+                            },
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ESTADOS.map((estado) => (
+                            <SelectItem key={estado} value={estado}>
+                              {estado}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -192,8 +352,9 @@ export default function ConfiguracoesSistemaPage() {
                     <Input
                       id="telefone"
                       value={formData.telefone}
-                      onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, telefone: maskPhone(e.target.value) })}
                       placeholder="(00) 0000-0000"
+                      maxLength={14}
                     />
                   </div>
                   <div>
@@ -204,8 +365,9 @@ export default function ConfiguracoesSistemaPage() {
                     <Input
                       id="whatsapp"
                       value={formData.whatsapp}
-                      onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, whatsapp: maskCellPhone(e.target.value) })}
                       placeholder="(00) 00000-0000"
+                      maxLength={15}
                     />
                   </div>
                 </div>
