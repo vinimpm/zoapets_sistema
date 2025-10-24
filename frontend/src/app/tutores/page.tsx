@@ -32,7 +32,13 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Edit, Trash2, Phone, Mail } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Search, Plus, Edit, Trash2, Phone, Mail, PawPrint } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { maskCPF, maskRG, maskPhone, maskCellPhone, maskCEP, unmask } from '@/lib/masks';
 
@@ -295,7 +301,33 @@ export default function TutoresPage() {
                     </TableCell>
                     <TableCell>
                       {tutor.pets && tutor.pets.length > 0 ? (
-                        <Badge variant="secondary">{tutor.pets.length} pet(s)</Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 transition-colors">
+                                <PawPrint className="h-3 w-3 mr-1" />
+                                {tutor.pets.length}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <div className="space-y-1">
+                                <p className="font-semibold text-xs mb-2">Pets cadastrados:</p>
+                                {tutor.pets.slice(0, 5).map((pet, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 text-xs">
+                                    <PawPrint className="h-3 w-3 text-primary" />
+                                    <span className="font-medium">{pet.nome}</span>
+                                    <span className="text-muted-foreground">({pet.especie})</span>
+                                  </div>
+                                ))}
+                                {tutor.pets.length > 5 && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    +{tutor.pets.length - 5} pet(s) não exibido(s)
+                                  </p>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       ) : (
                         <span className="text-muted-foreground text-sm">Nenhum</span>
                       )}
