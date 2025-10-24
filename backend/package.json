@@ -26,7 +26,8 @@
     "script:find-all-data": "ts-node -r tsconfig-paths/register src/scripts/find-all-data.ts",
     "script:fix-tenant-demo": "ts-node -r tsconfig-paths/register src/scripts/fix-tenant-demo.ts",
     "script:copy-user-to-tenant-demo": "ts-node -r tsconfig-paths/register src/scripts/copy-user-to-tenant-demo.ts",
-    "script:seed-permissions": "ts-node -r tsconfig-paths/register src/scripts/seed-permissions-tenant-demo.ts"
+    "script:seed-permissions": "ts-node -r tsconfig-paths/register src/scripts/seed-permissions-tenant-demo.ts",
+    "script:add-tenant-slug": "ts-node -r tsconfig-paths/register src/scripts/add-tenant-slug-to-users.ts"
   },
   "dependencies": {
     "@nestjs/bull": "^10.0.1",

@@ -122,11 +122,11 @@ async function bootstrap() {
 
     const [user] = await dataSource.query(`
       INSERT INTO "tenant_demo".users (
-        email, senha_hash, nome_completo, ativo
+        email, senha_hash, nome_completo, ativo, tenant_slug
       )
-      VALUES ($1, $2, $3, TRUE)
+      VALUES ($1, $2, $3, TRUE, 'tenant_demo')
       ON CONFLICT (email) DO UPDATE
-      SET senha_hash = $2
+      SET senha_hash = $2, tenant_slug = 'tenant_demo'
       RETURNING id, email
     `, ['admin@zoapets.com', senhaHash, 'Administrador']);
 

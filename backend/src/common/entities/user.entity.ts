@@ -6,13 +6,13 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'nome' })
-  nome: string;
+  @Column({ name: 'nome_completo' })
+  nomeCompleto: string;
 
   @Column({ unique: true })
   email: string;
 
-  @Column({ name: 'senha' })
+  @Column({ name: 'senha_hash' })
   senhaHash: string;
 
   @Column({ unique: true, nullable: true })
@@ -27,9 +27,6 @@ export class User {
   @Column({ name: 'avatar_url', nullable: true })
   avatarUrl: string;
 
-  @Column({ nullable: true })
-  cargo: string;
-
   @Column({ default: true })
   ativo: boolean;
 
@@ -38,6 +35,9 @@ export class User {
 
   @Column({ name: 'refresh_token_hash', nullable: true })
   refreshTokenHash: string | null;
+
+  @Column({ name: 'tenant_slug' })
+  tenantSlug: string;
 
   @ManyToMany(() => Role, role => role.users)
   @JoinTable({

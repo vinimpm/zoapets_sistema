@@ -46,10 +46,11 @@ export class AuthService {
       email: user.email,
       sub: user.id,
       roles: user.roles.map((r: any) => r.nome),
+      tenantSlug: user.tenantSlug, // SECURITY: Include tenant in JWT
     };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
-    const refreshToken = this.jwtService.sign({ sub: user.id }, { expiresIn: '7d' });
+    const refreshToken = this.jwtService.sign({ sub: user.id, tenantSlug: user.tenantSlug }, { expiresIn: '7d' });
 
     // Hash and store refresh token
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
@@ -63,6 +64,7 @@ export class AuthService {
         email: user.email,
         nomeCompleto: user.nome,
         roles: user.roles,
+        tenantSlug: user.tenantSlug,
       },
     };
   }

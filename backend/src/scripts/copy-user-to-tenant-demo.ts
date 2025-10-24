@@ -45,10 +45,11 @@ async function bootstrap() {
       INSERT INTO "tenant_demo".users (
         id, email, nome_completo, senha_hash, cpf, crmv, telefone,
         avatar_url, ativo, refresh_token_hash, ultimo_acesso,
-        created_at, updated_at
+        tenant_slug, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-      ON CONFLICT (email) DO NOTHING
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'tenant_demo', NOW(), NOW())
+      ON CONFLICT (email) DO UPDATE
+      SET tenant_slug = 'tenant_demo'
     `, [
       userDefault.id,
       userDefault.email,
