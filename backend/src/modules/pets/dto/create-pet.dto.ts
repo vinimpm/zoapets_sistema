@@ -31,7 +31,7 @@ export class CreatePetDto {
 
   @IsOptional()
   @IsString()
-  corPelagem?: string;
+  cor?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -40,18 +40,6 @@ export class CreatePetDto {
   @IsOptional()
   @IsString()
   microchip?: string;
-
-  @IsOptional()
-  @IsString()
-  fotoUrl?: string;
-
-  @IsOptional()
-  @IsArray()
-  alergias?: string[];
-
-  @IsOptional()
-  @IsArray()
-  doencasPrevias?: string[];
 
   @IsOptional()
   @IsString()
