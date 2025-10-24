@@ -52,6 +52,15 @@ export default function ExamesPage() {
   const [isSolicitarDialogOpen, setIsSolicitarDialogOpen] = useState(false);
   const [isRegistrarDialogOpen, setIsRegistrarDialogOpen] = useState(false);
   const [selectedExame, setSelectedExame] = useState<ExameResultado | null>(null);
+  const [petSearch, setPetSearch] = useState('');
+  const [showPetSuggestions, setShowPetSuggestions] = useState(false);
+  const [selectedPetName, setSelectedPetName] = useState('');
+  const [internacaoSearch, setInternacaoSearch] = useState('');
+  const [showInternacaoSuggestions, setShowInternacaoSuggestions] = useState(false);
+  const [selectedInternacaoName, setSelectedInternacaoName] = useState('');
+  const [exameSearch, setExameSearch] = useState('');
+  const [showExameSuggestions, setShowExameSuggestions] = useState(false);
+  const [selectedExameName, setSelectedExameName] = useState('');
   const [solicitarFormData, setSolicitarFormData] = useState<CreateExameResultadoDto>({
     exameId: '',
     petId: '',
@@ -63,11 +72,18 @@ export default function ExamesPage() {
     observacoes: '',
   });
 
-  // Query para catálogo de exames
-  const { data: catalogo = [] } = useQuery({
+  // Query para catálogo de exames (autocomplete - filtro client-side)
+  const { data: allCatalogo = [] } = useQuery({
     queryKey: ['exames-catalogo'],
     queryFn: () => examesService.findCatalogo(),
   });
+
+  const catalogo = exameSearch
+    ? allCatalogo.filter(exame =>
+        exame.nome.toLowerCase().includes(exameSearch.toLowerCase()) ||
+        (exame.categoria && exame.categoria.toLowerCase().includes(exameSearch.toLowerCase()))
+      )
+    : allCatalogo;
 
   // Query para resultados de exames
   const { data: resultados = [], isLoading } = useQuery({
@@ -76,17 +92,25 @@ export default function ExamesPage() {
       examesService.findResultados(statusFilter !== 'all' ? { status: statusFilter } : undefined),
   });
 
-  // Query para pets (select)
+  // Query para pets (autocomplete)
   const { data: pets = [] } = useQuery({
-    queryKey: ['pets'],
-    queryFn: () => petsService.findAll(),
+    queryKey: ['pets', petSearch],
+    queryFn: () => petsService.findAll(petSearch),
+    enabled: showPetSuggestions || petSearch.length > 0,
   });
 
-  // Query para internações ativas (select)
-  const { data: internacoes = [] } = useQuery({
+  // Query para internações ativas (autocomplete - filtro client-side)
+  const { data: allInternacoes = [] } = useQuery({
     queryKey: ['internacoes-ativas'],
     queryFn: () => internacoesService.findActive(),
   });
+
+  const internacoes = internacaoSearch
+    ? allInternacoes.filter(int =>
+        int.pet.nome.toLowerCase().includes(internacaoSearch.toLowerCase()) ||
+        (int.leito && int.leito.toLowerCase().includes(internacaoSearch.toLowerCase()))
+      )
+    : allInternacoes;
 
   // Mutation para solicitar exame
   const solicitarMutation = useMutation({
@@ -127,6 +151,27 @@ export default function ExamesPage() {
     },
   });
 
+  const handleSelectPet = (pet: any) => {
+    setSolicitarFormData({ ...solicitarFormData, petId: pet.id });
+    setSelectedPetName(`${pet.nome} (${pet.especie})`);
+    setPetSearch('');
+    setShowPetSuggestions(false);
+  };
+
+  const handleSelectInternacao = (internacao: any) => {
+    setSolicitarFormData({ ...solicitarFormData, internacaoId: internacao.id });
+    setSelectedInternacaoName(`${internacao.pet.nome} - Leito ${internacao.leito || 'N/A'}`);
+    setInternacaoSearch('');
+    setShowInternacaoSuggestions(false);
+  };
+
+  const handleSelectExame = (exame: any) => {
+    setSolicitarFormData({ ...solicitarFormData, exameId: exame.id });
+    setSelectedExameName(exame.nome);
+    setExameSearch('');
+    setShowExameSuggestions(false);
+  };
+
   const handleOpenSolicitarDialog = () => {
     setSolicitarFormData({
       exameId: '',
@@ -134,11 +179,23 @@ export default function ExamesPage() {
       internacaoId: '',
       observacoes: '',
     });
+    setSelectedPetName('');
+    setSelectedInternacaoName('');
+    setSelectedExameName('');
+    setPetSearch('');
+    setInternacaoSearch('');
+    setExameSearch('');
     setIsSolicitarDialogOpen(true);
   };
 
   const handleCloseSolicitarDialog = () => {
     setIsSolicitarDialogOpen(false);
+    setSelectedPetName('');
+    setSelectedInternacaoName('');
+    setSelectedExameName('');
+    setPetSearch('');
+    setInternacaoSearch('');
+    setExameSearch('');
   };
 
   const handleOpenRegistrarDialog = (exame: ExameResultado) => {
@@ -157,6 +214,17 @@ export default function ExamesPage() {
 
   const handleSolicitar = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!solicitarFormData.petId) {
+      toast.error('Por favor, selecione um pet');
+      return;
+    }
+
+    if (!solicitarFormData.exameId) {
+      toast.error('Por favor, selecione um exame');
+      return;
+    }
+
     solicitarMutation.mutate(solicitarFormData);
   };
 
@@ -440,67 +508,133 @@ export default function ExamesPage() {
           <form onSubmit={handleSolicitar}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="petId">Pet *</Label>
-                  <Select
-                    value={solicitarFormData.petId}
-                    onValueChange={(value) => setSolicitarFormData({ ...solicitarFormData, petId: value })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o pet" />
-                    </SelectTrigger>
-                    <SelectContent>
+                <div className="relative">
+                  <Label htmlFor="petSearch">Pet *</Label>
+                  <Input
+                    id="petSearch"
+                    placeholder={selectedPetName || "Digite para buscar o pet..."}
+                    value={petSearch}
+                    onChange={(e) => {
+                      setPetSearch(e.target.value);
+                      setShowPetSuggestions(true);
+                      if (!e.target.value) {
+                        setSolicitarFormData({ ...solicitarFormData, petId: '' });
+                        setSelectedPetName('');
+                      }
+                    }}
+                    onFocus={() => setShowPetSuggestions(true)}
+                    className={selectedPetName ? 'font-medium' : ''}
+                  />
+                  <input type="hidden" value={solicitarFormData.petId} required />
+                  {showPetSuggestions && petSearch.length > 0 && pets.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {pets.map((pet) => (
-                        <SelectItem key={pet.id} value={pet.id}>
-                          {pet.nome} ({pet.especie})
-                        </SelectItem>
+                        <button
+                          key={pet.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                          onClick={() => handleSelectPet(pet)}
+                        >
+                          <div className="font-medium">{pet.nome} ({pet.especie})</div>
+                          {pet.tutor && (
+                            <div className="text-sm text-gray-500">
+                              Tutor: {pet.tutor.nomeCompleto}
+                            </div>
+                          )}
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
+                  {selectedPetName && (
+                    <div className="text-sm text-green-600 mt-1">
+                      ✓ {selectedPetName}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <Label htmlFor="internacaoId">Internação (opcional)</Label>
-                  <Select
-                    value={solicitarFormData.internacaoId}
-                    onValueChange={(value) =>
-                      setSolicitarFormData({ ...solicitarFormData, internacaoId: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a internação" />
-                    </SelectTrigger>
-                    <SelectContent>
+                <div className="relative">
+                  <Label htmlFor="internacaoSearch">Internação (opcional)</Label>
+                  <Input
+                    id="internacaoSearch"
+                    placeholder={selectedInternacaoName || "Digite para buscar a internação..."}
+                    value={internacaoSearch}
+                    onChange={(e) => {
+                      setInternacaoSearch(e.target.value);
+                      setShowInternacaoSuggestions(true);
+                      if (!e.target.value) {
+                        setSolicitarFormData({ ...solicitarFormData, internacaoId: '' });
+                        setSelectedInternacaoName('');
+                      }
+                    }}
+                    onFocus={() => setShowInternacaoSuggestions(true)}
+                    className={selectedInternacaoName ? 'font-medium' : ''}
+                  />
+                  {showInternacaoSuggestions && internacaoSearch.length > 0 && internacoes.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {internacoes.map((int) => (
-                        <SelectItem key={int.id} value={int.id}>
-                          {int.pet.nome} - Leito {int.leito || 'N/A'}
-                        </SelectItem>
+                        <button
+                          key={int.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                          onClick={() => handleSelectInternacao(int)}
+                        >
+                          <div className="font-medium">{int.pet.nome}</div>
+                          <div className="text-sm text-gray-500">
+                            Leito: {int.leito || 'N/A'} • Motivo: {int.motivo}
+                          </div>
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
+                  {selectedInternacaoName && (
+                    <div className="text-sm text-green-600 mt-1">
+                      ✓ {selectedInternacaoName}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="exameId">Exame *</Label>
-                <Select
-                  value={solicitarFormData.exameId}
-                  onValueChange={(value) => setSolicitarFormData({ ...solicitarFormData, exameId: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o exame" />
-                  </SelectTrigger>
-                  <SelectContent>
+              <div className="relative">
+                <Label htmlFor="exameSearch">Exame *</Label>
+                <Input
+                  id="exameSearch"
+                  placeholder={selectedExameName || "Digite para buscar o exame..."}
+                  value={exameSearch}
+                  onChange={(e) => {
+                    setExameSearch(e.target.value);
+                    setShowExameSuggestions(true);
+                    if (!e.target.value) {
+                      setSolicitarFormData({ ...solicitarFormData, exameId: '' });
+                      setSelectedExameName('');
+                    }
+                  }}
+                  onFocus={() => setShowExameSuggestions(true)}
+                  className={selectedExameName ? 'font-medium' : ''}
+                />
+                <input type="hidden" value={solicitarFormData.exameId} required />
+                {showExameSuggestions && exameSearch.length > 0 && catalogo.filter((e) => e.ativo).length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                     {catalogo
                       .filter((e) => e.ativo)
                       .map((exame) => (
-                        <SelectItem key={exame.id} value={exame.id}>
-                          {exame.nome} - {exame.categoria}
-                        </SelectItem>
+                        <button
+                          key={exame.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                          onClick={() => handleSelectExame(exame)}
+                        >
+                          <div className="font-medium">{exame.nome}</div>
+                          <div className="text-sm text-gray-500">
+                            Categoria: {exame.categoria}
+                          </div>
+                        </button>
                       ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
+                {selectedExameName && (
+                  <div className="text-sm text-green-600 mt-1">
+                    ✓ {selectedExameName}
+                  </div>
+                )}
               </div>
 
               <div>
