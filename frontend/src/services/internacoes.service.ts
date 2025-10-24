@@ -70,8 +70,8 @@ export interface OcupacaoLeitos {
 class InternacoesService {
   async findAll(status?: string, prioridade?: string): Promise<Internacao[]> {
     const params = new URLSearchParams();
-    if (status) params.append('status', status);
-    if (prioridade) params.append('prioridade', prioridade);
+    if (status && status !== 'all') params.append('status', status);
+    if (prioridade && prioridade !== 'all') params.append('prioridade', prioridade);
 
     const { data } = await apiClient.get(`/internacoes?${params.toString()}`);
     return data;

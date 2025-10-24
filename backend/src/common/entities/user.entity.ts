@@ -6,13 +6,13 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'nome_completo' })
-  nomeCompleto: string;
+  @Column({ name: 'nome' })
+  nome: string;
 
   @Column({ unique: true })
   email: string;
 
-  @Column({ name: 'senha_hash' })
+  @Column({ name: 'senha' })
   senhaHash: string;
 
   @Column({ unique: true, nullable: true })
@@ -37,7 +37,7 @@ export class User {
   ultimoAcesso: Date;
 
   @Column({ name: 'refresh_token_hash', nullable: true })
-  refreshTokenHash: string;
+  refreshTokenHash: string | null;
 
   @ManyToMany(() => Role, role => role.users)
   @JoinTable({

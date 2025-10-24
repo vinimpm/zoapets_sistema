@@ -40,8 +40,8 @@ import { useAuthStore } from '@/store/auth.store';
 export default function InternacoesPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const [statusFilter, setStatusFilter] = useState('');
-  const [prioridadeFilter, setPrioridadeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [prioridadeFilter, setPrioridadeFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInternacao, setEditingInternacao] = useState<Internacao | null>(null);
   const [formData, setFormData] = useState<CreateInternacaoDto>({
@@ -201,7 +201,7 @@ export default function InternacoesPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <span className="text-2xl font-bold">{ocupacaoLeitos.taxaOcupacao.toFixed(1)}%</span>
+              <span className="text-2xl font-bold">{ocupacaoLeitos.taxaOcupacao?.toFixed(1) || '0.0'}%</span>
             </CardContent>
           </Card>
         </div>
@@ -222,7 +222,7 @@ export default function InternacoesPage() {
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="ativa">Ativas</SelectItem>
                 <SelectItem value="alta">Alta</SelectItem>
                 <SelectItem value="obito">Óbito</SelectItem>
@@ -233,7 +233,7 @@ export default function InternacoesPage() {
                 <SelectValue placeholder="Filtrar por prioridade" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="urgencia">Urgência</SelectItem>
                 <SelectItem value="alta">Alta</SelectItem>
                 <SelectItem value="media">Média</SelectItem>

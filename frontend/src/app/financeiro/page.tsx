@@ -39,7 +39,7 @@ import toast from 'react-hot-toast';
 
 export default function FinanceiroPage() {
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [isContaDialogOpen, setIsContaDialogOpen] = useState(false);
   const [isPagamentoDialogOpen, setIsPagamentoDialogOpen] = useState(false);
   const [selectedConta, setSelectedConta] = useState<Conta | null>(null);
@@ -178,7 +178,7 @@ export default function FinanceiroPage() {
   };
 
   return (
-    <div className="p-8">
+      <div className="p-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Financeiro</h1>
         <p className="text-muted-foreground">Gerencie contas a receber e pagamentos</p>
@@ -271,7 +271,7 @@ export default function FinanceiroPage() {
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="aberta">Abertas</SelectItem>
                 <SelectItem value="parcial">Parciais</SelectItem>
                 <SelectItem value="paga">Pagas</SelectItem>
@@ -539,6 +539,6 @@ export default function FinanceiroPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

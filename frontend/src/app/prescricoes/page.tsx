@@ -41,7 +41,7 @@ import { useAuthStore } from '@/store/auth.store';
 export default function PrescricoesPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<CreatePrescricaoDto>({
     internacaoId: '',
@@ -192,7 +192,7 @@ export default function PrescricoesPage() {
   };
 
   return (
-    <div className="p-8">
+      <div className="p-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Prescrições</h1>
         <p className="text-muted-foreground">Gerencie as prescrições médicas e medicamentos</p>
@@ -213,7 +213,7 @@ export default function PrescricoesPage() {
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="ativa">Ativas</SelectItem>
                 <SelectItem value="suspensa">Suspensas</SelectItem>
                 <SelectItem value="concluida">Concluídas</SelectItem>
@@ -484,6 +484,6 @@ export default function PrescricoesPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

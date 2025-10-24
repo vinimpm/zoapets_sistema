@@ -126,15 +126,17 @@ export class AgendamentosService {
   async update(id: string, updateAgendamentoDto: UpdateAgendamentoDto): Promise<Agendamento> {
     const agendamento = await this.findOne(id);
 
+    const updateData: any = { ...updateAgendamentoDto };
+
     if (updateAgendamentoDto.dataHoraInicio) {
-      updateAgendamentoDto['dataHoraInicio'] = new Date(updateAgendamentoDto.dataHoraInicio);
+      updateData.dataHoraInicio = new Date(updateAgendamentoDto.dataHoraInicio);
     }
 
     if (updateAgendamentoDto.dataHoraFim) {
-      updateAgendamentoDto['dataHoraFim'] = new Date(updateAgendamentoDto.dataHoraFim);
+      updateData.dataHoraFim = new Date(updateAgendamentoDto.dataHoraFim);
     }
 
-    Object.assign(agendamento, updateAgendamentoDto);
+    Object.assign(agendamento, updateData);
     return this.agendamentosRepository.save(agendamento);
   }
 

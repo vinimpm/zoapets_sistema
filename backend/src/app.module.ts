@@ -21,6 +21,7 @@ import { ExamesModule } from './modules/exames/exames.module';
 import { FinanceiroModule } from './modules/financeiro/financeiro.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { PublicApiModule } from './modules/public-api/public-api.module';
+import { RolesModule } from './modules/roles/roles.module';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { PublicApiModule } from './modules/public-api/public-api.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DATABASE_HOST || 'localhost',
-      port: parseInt(process.env.DATABASE_PORT) || 5432,
+      port: parseInt(process.env.DATABASE_PORT || '5432'),
       username: process.env.DATABASE_USER || 'postgres',
       password: process.env.DATABASE_PASSWORD || 'postgres123',
       database: process.env.DATABASE_NAME || 'zoapets_dev',
@@ -54,6 +55,7 @@ import { PublicApiModule } from './modules/public-api/public-api.module';
     FinanceiroModule,
     ApiKeysModule,
     PublicApiModule,
+    RolesModule,
   ],
   providers: [
     {

@@ -82,11 +82,13 @@ export class EvolucoesService {
   async update(id: string, updateEvolucaoDto: UpdateEvolucaoDto): Promise<Evolucao> {
     const evolucao = await this.findOne(id);
 
+    const updateData: any = { ...updateEvolucaoDto };
+
     if (updateEvolucaoDto.dataHora) {
-      updateEvolucaoDto['dataHora'] = new Date(updateEvolucaoDto.dataHora);
+      updateData.dataHora = new Date(updateEvolucaoDto.dataHora);
     }
 
-    Object.assign(evolucao, updateEvolucaoDto);
+    Object.assign(evolucao, updateData);
     return this.evolucoesRepository.save(evolucao);
   }
 

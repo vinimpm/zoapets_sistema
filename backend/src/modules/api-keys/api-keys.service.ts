@@ -114,11 +114,13 @@ export class ApiKeysService {
       throw new NotFoundException(`API Key com ID ${id} não encontrada`);
     }
 
+    const updateData: any = { ...updateApiKeyDto };
+
     if (updateApiKeyDto.expiresAt) {
-      updateApiKeyDto['expiresAt'] = new Date(updateApiKeyDto.expiresAt);
+      updateData.expiresAt = new Date(updateApiKeyDto.expiresAt);
     }
 
-    Object.assign(apiKey, updateApiKeyDto);
+    Object.assign(apiKey, updateData);
     return this.apiKeysRepository.save(apiKey);
   }
 

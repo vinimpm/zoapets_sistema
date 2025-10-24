@@ -9,6 +9,6 @@ import { User } from '../../common/entities/user.entity';
   imports: [TypeOrmModule.forFeature([ApiKey, User])],
   controllers: [ApiKeysController],
   providers: [ApiKeysService],
-  exports: [ApiKeysService],
+  exports: [ApiKeysService, TypeOrmModule],
 })
 export class ApiKeysModule {}

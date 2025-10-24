@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@antml/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agendamentosService, type Agendamento, type CreateAgendamentoDto } from '@/services/agendamentos.service';
 import { petsService } from '@/services/pets.service';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export default function AgendamentosPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<CreateAgendamentoDto>({
     petId: '',
@@ -163,7 +163,7 @@ export default function AgendamentosPage() {
   }, {} as Record<string, Agendamento[]>);
 
   return (
-    <div className="p-8">
+      <div className="p-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Agendamentos</h1>
         <p className="text-muted-foreground">Gerencie a agenda de consultas e procedimentos</p>
@@ -269,7 +269,7 @@ export default function AgendamentosPage() {
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="agendado">Agendados</SelectItem>
                 <SelectItem value="confirmado">Confirmados</SelectItem>
                 <SelectItem value="realizado">Realizados</SelectItem>
@@ -453,6 +453,6 @@ export default function AgendamentosPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

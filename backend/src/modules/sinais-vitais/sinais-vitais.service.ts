@@ -96,11 +96,13 @@ export class SinaisVitaisService {
   async update(id: string, updateSinaisVitaisDto: UpdateSinaisVitaisDto): Promise<SinaisVitais> {
     const sinaisVitais = await this.findOne(id);
 
+    const updateData: any = { ...updateSinaisVitaisDto };
+
     if (updateSinaisVitaisDto.dataHora) {
-      updateSinaisVitaisDto['dataHora'] = new Date(updateSinaisVitaisDto.dataHora);
+      updateData.dataHora = new Date(updateSinaisVitaisDto.dataHora);
     }
 
-    Object.assign(sinaisVitais, updateSinaisVitaisDto);
+    Object.assign(sinaisVitais, updateData);
     return this.sinaisVitaisRepository.save(sinaisVitais);
   }
 

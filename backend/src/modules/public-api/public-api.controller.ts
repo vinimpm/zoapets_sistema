@@ -126,7 +126,7 @@ export class PublicApiController {
 
   @Patch('internacoes/:id/alta')
   async darAlta(@Param('id') id: string, @Body() altaDto: AltaDto) {
-    return this.internacoesService.darAlta(id, altaDto);
+    return this.internacoesService.darAlta(id, altaDto.observacoes);
   }
 
   // ===== AGENDAMENTOS =====
@@ -179,19 +179,19 @@ export class PublicApiController {
 
   @Patch('agendamentos/:id/cancelar')
   async cancelarAgendamento(@Param('id') id: string, @Body('motivo') motivo?: string) {
-    return this.agendamentosService.cancelar(id, motivo);
+    return this.agendamentosService.cancelar(id);
   }
 
   // ===== FINANCEIRO =====
 
   @Get('financeiro/contas')
   async getContas(@Query('status') status?: string) {
-    return this.financeiroService.findAllContas(status);
+    return this.financeiroService.findAllContas({ status });
   }
 
   @Get('financeiro/contas/:id')
   async getConta(@Param('id') id: string) {
-    return this.financeiroService.findConta(id);
+    return this.financeiroService.findOneConta(id);
   }
 
   @Post('financeiro/contas/:id/pagamentos')
@@ -199,7 +199,7 @@ export class PublicApiController {
     @Param('id') contaId: string,
     @Body() createPagamentoDto: CreatePagamentoDto,
   ) {
-    return this.financeiroService.createPagamento(contaId, createPagamentoDto);
+    return this.financeiroService.createPagamento({ ...createPagamentoDto, contaId });
   }
 
   // Health check

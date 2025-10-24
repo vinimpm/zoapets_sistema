@@ -95,15 +95,17 @@ export class ExamesService {
   async updateResultado(id: string, updateDto: UpdateResultadoExameDto): Promise<ResultadoExame> {
     const resultado = await this.findOneResultado(id);
 
+    const updateData: any = { ...updateDto };
+
     if (updateDto.dataSolicitacao) {
-      updateDto['dataSolicitacao'] = new Date(updateDto.dataSolicitacao);
+      updateData.dataSolicitacao = new Date(updateDto.dataSolicitacao);
     }
 
     if (updateDto.dataResultado) {
-      updateDto['dataResultado'] = new Date(updateDto.dataResultado);
+      updateData.dataResultado = new Date(updateDto.dataResultado);
     }
 
-    Object.assign(resultado, updateDto);
+    Object.assign(resultado, updateData);
     return this.resultadosRepository.save(resultado);
   }
 

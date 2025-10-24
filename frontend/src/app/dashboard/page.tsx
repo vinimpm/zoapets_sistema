@@ -1,170 +1,218 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/auth.store';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardService } from '@/services/dashboard.service';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BedDouble, AlertCircle, Syringe, Clock, Calendar, CheckCircle } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  // Dashboard with charts and stats
+  const { data: stats } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => dashboardService.getStats(),
+  });
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, router]);
+  const { data: internacoesChart = [] } = useQuery({
+    queryKey: ['dashboard-internacoes-chart'],
+    queryFn: () => dashboardService.getInternacoesChart(),
+  });
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
-  };
+  const { data: financeiroChart = [] } = useQuery({
+    queryKey: ['dashboard-financeiro-chart'],
+    queryFn: () => dashboardService.getFinanceiroChart(),
+  });
 
-  if (!isAuthenticated || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const taxaConfirmacao = stats?.agendamentosHoje
+    ? ((stats.agendamentosConfirmados / stats.agendamentosHoje) * 100).toFixed(1)
+    : '0.0';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white text-xl font-bold">
-              Z
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Zoa Pets</h1>
-              <p className="text-sm text-muted-foreground">Sistema Hospitalar</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium">{user.nomeCompleto}</p>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
-            </div>
-            <Button variant="outline" onClick={handleLogout}>
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold">Dashboard</h2>
-          <p className="text-muted-foreground">Bem-vindo ao sistema hospitalar veterinário</p>
+    <div className="p-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Visão geral do sistema hospitalar veterinário</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Cards de Estatísticas - 4 cards principais */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-primary">12</CardTitle>
-              <CardDescription>Internações Ativas</CardDescription>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Internações Ativas
+              </CardTitle>
             </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <BedDouble className="h-5 w-5 text-blue-500" />
+                <span className="text-2xl font-bold">{stats?.internacoesAtivas || 0}</span>
+              </div>
+            </CardContent>
           </Card>
+
           <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-orange-500">3</CardTitle>
-              <CardDescription>Pacientes Críticos</CardDescription>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Pacientes Críticos
+              </CardTitle>
             </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                <span className="text-2xl font-bold">{stats?.pacientesCriticos || 0}</span>
+              </div>
+            </CardContent>
           </Card>
+
           <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-yellow-500">45</CardTitle>
-              <CardDescription>Administrações Pendentes</CardDescription>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Administrações Pendentes
+              </CardTitle>
             </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Syringe className="h-5 w-5 text-yellow-500" />
+                <span className="text-2xl font-bold">{stats?.administracoesPendentes || 0}</span>
+              </div>
+            </CardContent>
           </Card>
+
           <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-red-500">8</CardTitle>
-              <CardDescription>Medicações Atrasadas</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-
-        {/* Quick Access */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>Internações</CardTitle>
-              <CardDescription>Gerencie pacientes internados</CardDescription>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Medicações Atrasadas
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Controle completo de internações, evoluções e sinais vitais
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>RAEM</CardTitle>
-              <CardDescription>Administração de Medicamentos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Registre e controle todas as administrações de medicamentos
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>Agendamentos</CardTitle>
-              <CardDescription>Consultas e Procedimentos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Gerencie a agenda de consultas e procedimentos
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>Pets</CardTitle>
-              <CardDescription>Cadastro de Pacientes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Gerencie o cadastro completo de pets e tutores
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>Financeiro</CardTitle>
-              <CardDescription>Contas e Pagamentos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Controle financeiro completo da clínica
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>Medicamentos</CardTitle>
-              <CardDescription>Catálogo e Estoque</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Gerencie medicamentos e controle de estoque
-              </p>
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-red-500" />
+                <span className="text-2xl font-bold">{stats?.medicacoesAtrasadas || 0}</span>
+              </div>
             </CardContent>
           </Card>
         </div>
-      </main>
-    </div>
+
+        {/* Gráficos - 2 gráficos grandes lado a lado */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Gráfico de Internações */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Internações - Últimos 7 dias</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={internacoesChart}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="data"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="entradas"
+                    stackId="1"
+                    stroke="#10b981"
+                    fill="#10b981"
+                    name="Entradas"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="saidas"
+                    stackId="2"
+                    stroke="#ef4444"
+                    fill="#ef4444"
+                    name="Saídas"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico Financeiro */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Financeiro - Últimos 7 dias</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={financeiroChart}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="data"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => `R$ ${Number(value).toFixed(2)}`}
+                  />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="receita"
+                    stackId="1"
+                    stroke="#10b981"
+                    fill="#10b981"
+                    name="Receita"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="despesa"
+                    stackId="2"
+                    stroke="#ef4444"
+                    fill="#ef4444"
+                    name="Despesa"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Cards de Agendamentos - 3 cards na parte inferior */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Agendamentos Hoje
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-500" />
+                <span className="text-2xl font-bold">{stats?.agendamentosHoje || 0}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Confirmados
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <span className="text-2xl font-bold">{stats?.agendamentosConfirmados || 0}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Taxa de Confirmação
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <span className="text-2xl font-bold">{taxaConfirmacao}%</span>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
   );
 }

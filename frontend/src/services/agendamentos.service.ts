@@ -47,7 +47,7 @@ class AgendamentosService {
     const params = new URLSearchParams();
     if (filters?.data) params.append('data', filters.data.toISOString());
     if (filters?.veterinarioId) params.append('veterinarioId', filters.veterinarioId);
-    if (filters?.status) params.append('status', filters.status);
+    if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
 
     const { data } = await apiClient.get(`/agendamentos?${params.toString()}`);
     return data;
