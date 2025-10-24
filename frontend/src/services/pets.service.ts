@@ -15,7 +15,7 @@ export interface Pet {
   tutorId: string;
   tutor?: {
     id: string;
-    nome: string;
+    nomeCompleto: string;
     telefone?: string;
     celular?: string;
   };

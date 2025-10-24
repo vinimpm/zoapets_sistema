@@ -40,6 +40,9 @@ import { format } from 'date-fns';
 export default function PetsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [tutorSearch, setTutorSearch] = useState('');
+  const [showTutorSuggestions, setShowTutorSuggestions] = useState(false);
+  const [selectedTutorName, setSelectedTutorName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
@@ -64,10 +67,11 @@ export default function PetsPage() {
     queryFn: () => petsService.findAll(search),
   });
 
-  // Query para listar tutores (para o select)
+  // Query para listar tutores com busca
   const { data: tutores = [] } = useQuery({
-    queryKey: ['tutores'],
-    queryFn: () => tutoresService.findAll(),
+    queryKey: ['tutores', tutorSearch],
+    queryFn: () => tutoresService.findAll(tutorSearch),
+    enabled: showTutorSuggestions || tutorSearch.length > 0,
   });
 
   // Mutation para criar/editar
@@ -116,6 +120,11 @@ export default function PetsPage() {
         observacoes: pet.observacoes || '',
         tutorId: pet.tutorId,
       });
+      // Set tutor name if editing
+      if (pet.tutor) {
+        setSelectedTutorName(pet.tutor.nomeCompleto);
+        setTutorSearch('');
+      }
     } else {
       setEditingPet(null);
       setFormData({
@@ -131,13 +140,26 @@ export default function PetsPage() {
         observacoes: '',
         tutorId: '',
       });
+      setSelectedTutorName('');
+      setTutorSearch('');
     }
+    setShowTutorSuggestions(false);
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingPet(null);
+    setSelectedTutorName('');
+    setTutorSearch('');
+    setShowTutorSuggestions(false);
+  };
+
+  const handleSelectTutor = (tutor: any) => {
+    setFormData({ ...formData, tutorId: tutor.id });
+    setSelectedTutorName(tutor.nomeCompleto);
+    setTutorSearch('');
+    setShowTutorSuggestions(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -235,7 +257,7 @@ export default function PetsPage() {
                       {pet.tutor && (
                         <div className="flex items-center gap-1">
                           <User className="h-3 w-3" />
-                          <span className="text-sm">{pet.tutor.nome}</span>
+                          <span className="text-sm">{pet.tutor.nomeCompleto}</span>
                         </div>
                       )}
                     </TableCell>
@@ -303,24 +325,46 @@ export default function PetsPage() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="tutorId">Tutor *</Label>
-                  <Select
-                    value={formData.tutorId}
-                    onValueChange={(value) => setFormData({ ...formData, tutorId: value })}
+                <div className="relative">
+                  <Label htmlFor="tutorSearch">Tutor *</Label>
+                  <Input
+                    id="tutorSearch"
+                    placeholder={selectedTutorName || "Digite para buscar o tutor..."}
+                    value={tutorSearch}
+                    onChange={(e) => {
+                      setTutorSearch(e.target.value);
+                      setShowTutorSuggestions(true);
+                      if (!e.target.value) {
+                        setFormData({ ...formData, tutorId: '' });
+                        setSelectedTutorName('');
+                      }
+                    }}
+                    onFocus={() => setShowTutorSuggestions(true)}
+                    className={selectedTutorName ? 'font-medium' : ''}
                     required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tutor" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  />
+                  {showTutorSuggestions && tutorSearch.length > 0 && tutores.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {tutores.map((tutor) => (
-                        <SelectItem key={tutor.id} value={tutor.id}>
-                          {tutor.nome}
-                        </SelectItem>
+                        <button
+                          key={tutor.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                          onClick={() => handleSelectTutor(tutor)}
+                        >
+                          <div className="font-medium">{tutor.nomeCompleto}</div>
+                          <div className="text-sm text-gray-500">
+                            CPF: {tutor.cpf} {tutor.telefonePrincipal && `• ${tutor.telefonePrincipal}`}
+                          </div>
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
+                  {selectedTutorName && (
+                    <div className="text-sm text-green-600 mt-1">
+                      ✓ {selectedTutorName}
+                    </div>
+                  )}
                 </div>
               </div>
 
