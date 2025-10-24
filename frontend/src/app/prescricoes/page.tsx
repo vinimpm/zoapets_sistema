@@ -43,6 +43,12 @@ export default function PrescricoesPage() {
   const { user } = useAuthStore();
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [internacaoSearch, setInternacaoSearch] = useState('');
+  const [showInternacaoSuggestions, setShowInternacaoSuggestions] = useState(false);
+  const [selectedInternacaoName, setSelectedInternacaoName] = useState('');
+  const [medicamentoSearch, setMedicamentoSearch] = useState('');
+  const [showMedicamentoSuggestions, setShowMedicamentoSuggestions] = useState(false);
+  const [selectedMedicamentoName, setSelectedMedicamentoName] = useState('');
   const [formData, setFormData] = useState<CreatePrescricaoDto>({
     internacaoId: '',
     veterinarioId: user?.id || '',
@@ -65,16 +71,24 @@ export default function PrescricoesPage() {
     queryFn: () => prescricoesService.findAll(statusFilter),
   });
 
-  // Query para internações ativas (para o select)
-  const { data: internacoes = [] } = useQuery({
+  // Query para internações ativas (autocomplete - filtro client-side)
+  const { data: allInternacoes = [] } = useQuery({
     queryKey: ['internacoes-ativas'],
     queryFn: () => internacoesService.findActive(),
   });
 
-  // Query para medicamentos (para o select)
+  const internacoes = internacaoSearch
+    ? allInternacoes.filter(int =>
+        int.pet.nome.toLowerCase().includes(internacaoSearch.toLowerCase()) ||
+        (int.leito && int.leito.toLowerCase().includes(internacaoSearch.toLowerCase()))
+      )
+    : allInternacoes;
+
+  // Query para medicamentos (autocomplete)
   const { data: medicamentos = [] } = useQuery({
-    queryKey: ['medicamentos'],
-    queryFn: () => medicamentosService.findAll(),
+    queryKey: ['medicamentos', medicamentoSearch],
+    queryFn: () => medicamentosService.findAll(medicamentoSearch),
+    enabled: showMedicamentoSuggestions || medicamentoSearch.length > 0,
   });
 
   // Mutation para criar prescrição
@@ -114,6 +128,20 @@ export default function PrescricoesPage() {
     },
   });
 
+  const handleSelectInternacao = (internacao: any) => {
+    setFormData({ ...formData, internacaoId: internacao.id });
+    setSelectedInternacaoName(`${internacao.pet.nome} - Leito ${internacao.leito || 'N/A'}`);
+    setInternacaoSearch('');
+    setShowInternacaoSuggestions(false);
+  };
+
+  const handleSelectMedicamento = (medicamento: any) => {
+    setCurrentItem({ ...currentItem, medicamentoId: medicamento.id });
+    setSelectedMedicamentoName(medicamento.nome);
+    setMedicamentoSearch('');
+    setShowMedicamentoSuggestions(false);
+  };
+
   const handleOpenDialog = () => {
     setFormData({
       internacaoId: '',
@@ -130,11 +158,19 @@ export default function PrescricoesPage() {
       frequencia: '',
       observacoes: '',
     });
+    setSelectedInternacaoName('');
+    setSelectedMedicamentoName('');
+    setInternacaoSearch('');
+    setMedicamentoSearch('');
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
+    setSelectedInternacaoName('');
+    setSelectedMedicamentoName('');
+    setInternacaoSearch('');
+    setMedicamentoSearch('');
   };
 
   const handleAddItem = () => {
@@ -156,6 +192,7 @@ export default function PrescricoesPage() {
       observacoes: '',
     });
 
+    setSelectedMedicamentoName('');
     toast.success('Medicamento adicionado');
   };
 
@@ -168,6 +205,11 @@ export default function PrescricoesPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.internacaoId) {
+      toast.error('Por favor, selecione uma internação');
+      return;
+    }
 
     if (formData.itens.length === 0) {
       toast.error('Adicione pelo menos um medicamento à prescrição');
@@ -315,24 +357,46 @@ export default function PrescricoesPage() {
             <div className="grid gap-6 py-4">
               {/* Dados da Prescrição */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="internacaoId">Internação *</Label>
-                  <Select
-                    value={formData.internacaoId}
-                    onValueChange={(value) => setFormData({ ...formData, internacaoId: value })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a internação" />
-                    </SelectTrigger>
-                    <SelectContent>
+                <div className="relative">
+                  <Label htmlFor="internacaoSearch">Internação *</Label>
+                  <Input
+                    id="internacaoSearch"
+                    placeholder={selectedInternacaoName || "Digite para buscar a internação..."}
+                    value={internacaoSearch}
+                    onChange={(e) => {
+                      setInternacaoSearch(e.target.value);
+                      setShowInternacaoSuggestions(true);
+                      if (!e.target.value) {
+                        setFormData({ ...formData, internacaoId: '' });
+                        setSelectedInternacaoName('');
+                      }
+                    }}
+                    onFocus={() => setShowInternacaoSuggestions(true)}
+                    className={selectedInternacaoName ? 'font-medium' : ''}
+                  />
+                  <input type="hidden" value={formData.internacaoId} required />
+                  {showInternacaoSuggestions && internacaoSearch.length > 0 && internacoes.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {internacoes.map((int) => (
-                        <SelectItem key={int.id} value={int.id}>
-                          {int.pet.nome} - Leito {int.leito || 'N/A'}
-                        </SelectItem>
+                        <button
+                          key={int.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                          onClick={() => handleSelectInternacao(int)}
+                        >
+                          <div className="font-medium">{int.pet.nome}</div>
+                          <div className="text-sm text-gray-500">
+                            Leito: {int.leito || 'N/A'} • Motivo: {int.motivo}
+                          </div>
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
+                  {selectedInternacaoName && (
+                    <div className="text-sm text-green-600 mt-1">
+                      ✓ {selectedInternacaoName}
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -373,23 +437,46 @@ export default function PrescricoesPage() {
 
                 <div className="grid gap-4 mb-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    <div className="relative">
                       <Label>Medicamento *</Label>
-                      <Select
-                        value={currentItem.medicamentoId}
-                        onValueChange={(value) => setCurrentItem({ ...currentItem, medicamentoId: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o medicamento" />
-                        </SelectTrigger>
-                        <SelectContent>
+                      <Input
+                        placeholder={selectedMedicamentoName || "Digite para buscar o medicamento..."}
+                        value={medicamentoSearch}
+                        onChange={(e) => {
+                          setMedicamentoSearch(e.target.value);
+                          setShowMedicamentoSuggestions(true);
+                          if (!e.target.value) {
+                            setCurrentItem({ ...currentItem, medicamentoId: '' });
+                            setSelectedMedicamentoName('');
+                          }
+                        }}
+                        onFocus={() => setShowMedicamentoSuggestions(true)}
+                        className={selectedMedicamentoName ? 'font-medium' : ''}
+                      />
+                      {showMedicamentoSuggestions && medicamentoSearch.length > 0 && medicamentos.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                           {medicamentos.map((med) => (
-                            <SelectItem key={med.id} value={med.id}>
-                              {med.nome}
-                            </SelectItem>
+                            <button
+                              key={med.id}
+                              type="button"
+                              className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                              onClick={() => handleSelectMedicamento(med)}
+                            >
+                              <div className="font-medium">{med.nome}</div>
+                              {med.categoria && (
+                                <div className="text-sm text-gray-500">
+                                  Categoria: {med.categoria}
+                                </div>
+                              )}
+                            </button>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </div>
+                      )}
+                      {selectedMedicamentoName && (
+                        <div className="text-sm text-green-600 mt-1">
+                          ✓ {selectedMedicamentoName}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label>Dose *</Label>
