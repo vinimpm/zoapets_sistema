@@ -262,12 +262,12 @@ export default function PermissoesPage() {
                     <div key={recurso} className="border rounded-lg p-4">
                       <h3 className="text-lg font-semibold mb-4 capitalize">{recurso}</h3>
                       <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full border-collapse">
                           <thead>
                             <tr className="border-b">
-                              <th className="text-left p-2 font-medium">Ação</th>
+                              <th className="text-left p-2 font-medium w-48">Ação</th>
                               {roles.map((role) => (
-                                <th key={role.id} className="text-center p-2 font-medium">
+                                <th key={role.id} className="text-center p-2 font-medium w-32">
                                   {role.nome}
                                 </th>
                               ))}
@@ -276,13 +276,13 @@ export default function PermissoesPage() {
                           <tbody>
                             {perms.map((permission) => (
                               <tr key={permission.id} className="border-b">
-                                <td className="p-2">{permission.acao}</td>
+                                <td className="p-2 w-48">{permission.acao}</td>
                                 {roles.map((role) => {
                                   const hasPermission = role.permissions.some(
                                     (p) => p.id === permission.id
                                   );
                                   return (
-                                    <td key={role.id} className="text-center p-2">
+                                    <td key={role.id} className="text-center p-2 w-32">
                                       <button
                                         className={`p-2 rounded-full transition-colors ${
                                           hasPermission

@@ -15,7 +15,7 @@ apiClient.interceptors.request.use(
     // Get token from localStorage
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('accessToken');
-      const tenantSlug = localStorage.getItem('tenantSlug') || 'demo';
+      const tenantSlug = localStorage.getItem('tenantSlug') || 'tenant_demo';
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
