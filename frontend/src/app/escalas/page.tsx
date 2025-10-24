@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { escalasService, type Escala, type CreateEscalaDto, type Turno } from '@/services/escalas.service';
 import { usersService } from '@/services/users.service';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,6 +21,9 @@ export default function EscalasPage() {
   const queryClient = useQueryClient();
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [funcionarioSearch, setFuncionarioSearch] = useState('');
+  const [showFuncionarioSuggestions, setShowFuncionarioSuggestions] = useState(false);
+  const [selectedFuncionarioName, setSelectedFuncionarioName] = useState('');
   const [formData, setFormData] = useState<CreateEscalaDto>({
     funcionarioId: '',
     turnoId: '',
@@ -36,8 +40,9 @@ export default function EscalasPage() {
   });
 
   const { data: users = [] } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersService.findAll(),
+    queryKey: ['users', funcionarioSearch],
+    queryFn: () => usersService.findAll(funcionarioSearch),
+    enabled: showFuncionarioSuggestions || funcionarioSearch.length > 0,
   });
 
   const { data: escalas = [], isLoading } = useQuery({
@@ -72,6 +77,13 @@ export default function EscalasPage() {
     },
   });
 
+  const handleSelectFuncionario = (user: any) => {
+    setFormData({ ...formData, funcionarioId: user.id });
+    setSelectedFuncionarioName(`${user.nomeCompleto} - ${user.cargo || 'N/A'}`);
+    setFuncionarioSearch('');
+    setShowFuncionarioSuggestions(false);
+  };
+
   const handleOpenDialog = () => {
     setFormData({
       funcionarioId: '',
@@ -79,11 +91,24 @@ export default function EscalasPage() {
       data: currentWeekStart.toISOString().split('T')[0],
       status: 'agendado',
     });
+    setSelectedFuncionarioName('');
+    setFuncionarioSearch('');
     setIsDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.funcionarioId) {
+      toast.error('Por favor, selecione um funcionário');
+      return;
+    }
+
+    if (!formData.turnoId) {
+      toast.error('Por favor, selecione um turno');
+      return;
+    }
+
     createMutation.mutate(formData);
   };
 
@@ -218,23 +243,48 @@ export default function EscalasPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
-              <div>
-                <Label>Funcionário</Label>
-                <Select value={formData.funcionarioId} onValueChange={(v) => setFormData({ ...formData, funcionarioId: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
+              <div className="relative">
+                <Label>Funcionário *</Label>
+                <Input
+                  placeholder={selectedFuncionarioName || "Digite para buscar o funcionário..."}
+                  value={funcionarioSearch}
+                  onChange={(e) => {
+                    setFuncionarioSearch(e.target.value);
+                    setShowFuncionarioSuggestions(true);
+                    if (!e.target.value) {
+                      setFormData({ ...formData, funcionarioId: '' });
+                      setSelectedFuncionarioName('');
+                    }
+                  }}
+                  onFocus={() => setShowFuncionarioSuggestions(true)}
+                  className={selectedFuncionarioName ? 'font-medium' : ''}
+                />
+                <input type="hidden" value={formData.funcionarioId} required />
+                {showFuncionarioSuggestions && funcionarioSearch.length > 0 && users.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                     {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.nomeCompleto} - {user.cargo || 'N/A'}
-                      </SelectItem>
+                      <button
+                        key={user.id}
+                        type="button"
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                        onClick={() => handleSelectFuncionario(user)}
+                      >
+                        <div className="font-medium">{user.nomeCompleto}</div>
+                        <div className="text-sm text-gray-500">
+                          Cargo: {user.cargo || 'N/A'} • Email: {user.email}
+                        </div>
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
+                {selectedFuncionarioName && (
+                  <div className="text-sm text-green-600 mt-1">
+                    ✓ {selectedFuncionarioName}
+                  </div>
+                )}
               </div>
               <div>
-                <Label>Turno</Label>
+                <Label>Turno *</Label>
                 <Select value={formData.turnoId} onValueChange={(v) => setFormData({ ...formData, turnoId: v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
