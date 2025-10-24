@@ -164,6 +164,13 @@ export default function PetsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação manual: verifica se tutor foi selecionado
+    if (!formData.tutorId) {
+      toast.error('Por favor, selecione um tutor');
+      return;
+    }
+
     saveMutation.mutate(formData);
   };
 
@@ -341,6 +348,11 @@ export default function PetsPage() {
                     }}
                     onFocus={() => setShowTutorSuggestions(true)}
                     className={selectedTutorName ? 'font-medium' : ''}
+                  />
+                  {/* Hidden input for HTML5 validation */}
+                  <input
+                    type="hidden"
+                    value={formData.tutorId}
                     required
                   />
                   {showTutorSuggestions && tutorSearch.length > 0 && tutores.length > 0 && (
