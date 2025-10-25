@@ -14,7 +14,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard('local'))
   async login(@Request() req: any, @Body() loginDto: LoginDto) {
-    return this.authService.login(req.user);
+    // SECURITY: Discover tenant by email lookup in public.tenant_users
+    // This prevents users from accessing other tenants by manipulating the tenantSlug
+    const tenantSlug = await this.authService.findTenantByEmail(loginDto.email);
+    return this.authService.login(req.user, tenantSlug);
   }
 
   @Public()

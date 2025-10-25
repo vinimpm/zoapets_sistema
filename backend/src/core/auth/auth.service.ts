@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../../common/entities/user.entity';
 import { Role } from '../../common/entities/role.entity';
@@ -15,7 +15,34 @@ export class AuthService {
     @InjectRepository(Role)
     private rolesRepository: Repository<Role>,
     private jwtService: JwtService,
+    private dataSource: DataSource,
   ) {}
+
+  /**
+   * SECURITY: Finds the tenant slug for a given email address
+   * Queries the global public.tenant_users table
+   * Returns 'demo' as fallback for testing if email not found
+   */
+  async findTenantByEmail(email: string): Promise<string> {
+    try {
+      const result = await this.dataSource.query(
+        `SELECT tenant_slug FROM public.tenant_users WHERE email = $1`,
+        [email]
+      );
+
+      if (result && result.length > 0) {
+        return result[0].tenant_slug;
+      }
+
+      // Fallback to 'demo' for testing purposes
+      console.warn(`Email ${email} not found in tenant_users, falling back to 'demo'`);
+      return 'demo';
+    } catch (error) {
+      console.error('Error finding tenant by email:', error);
+      // Safe fallback to demo
+      return 'demo';
+    }
+  }
 
   async validateUser(email: string, senha: string): Promise<any> {
     const user = await this.usersRepository.findOne({
@@ -41,16 +68,16 @@ export class AuthService {
     return result;
   }
 
-  async login(user: any) {
+  async login(user: any, tenantSlug: string) {
     const payload = {
       email: user.email,
       sub: user.id,
       roles: user.roles.map((r: any) => r.nome),
-      tenantSlug: user.tenantSlug, // SECURITY: Include tenant in JWT
+      tenantSlug, // SECURITY: Include tenant in JWT
     };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
-    const refreshToken = this.jwtService.sign({ sub: user.id, tenantSlug: user.tenantSlug }, { expiresIn: '7d' });
+    const refreshToken = this.jwtService.sign({ sub: user.id, tenantSlug }, { expiresIn: '7d' });
 
     // Hash and store refresh token
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
@@ -62,9 +89,9 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        nomeCompleto: user.nome,
+        nomeCompleto: user.nomeCompleto,
         roles: user.roles,
-        tenantSlug: user.tenantSlug,
+        tenantSlug,
       },
     };
   }
@@ -126,7 +153,8 @@ export class AuthService {
         throw new UnauthorizedException('Refresh token inválido');
       }
 
-      return this.login(user);
+      // Use tenant from refresh token payload
+      return this.login(user, payload.tenantSlug);
     } catch (error) {
       throw new UnauthorizedException('Refresh token inválido ou expirado');
     }

@@ -1,7 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { Injectable, Logger, ConflictException } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PermissionsSeedService } from '../roles/permissions-seed.service';
+import { Subscription, SubscriptionStatus, BillingInterval } from '../../common/entities/subscription.entity';
+import { Plan, PlanSlug } from '../../common/entities/plan.entity';
+import { UsageTracking } from '../../common/entities/usage-tracking.entity';
 
 export interface ProvisionTenantDto {
   tenantSlug: string;
@@ -9,6 +12,16 @@ export interface ProvisionTenantDto {
   adminEmail: string;
   adminPassword: string;
   adminNomeCompleto: string;
+}
+
+export interface SignupDto {
+  nomeClinica: string;
+  adminEmail: string;
+  adminPassword: string;
+  adminNomeCompleto: string;
+  adminTelefone?: string;
+  adminCpf?: string;
+  planSlug?: string; // Opcional - padrão é FREE
 }
 
 @Injectable()
@@ -19,6 +32,12 @@ export class TenantProvisioningService {
     @InjectDataSource()
     private dataSource: DataSource,
     private permissionsSeedService: PermissionsSeedService,
+    @InjectRepository(Plan)
+    private plansRepository: Repository<Plan>,
+    @InjectRepository(Subscription)
+    private subscriptionsRepository: Repository<Subscription>,
+    @InjectRepository(UsageTracking)
+    private usageTrackingRepository: Repository<UsageTracking>,
   ) {}
 
   /**
@@ -64,6 +83,198 @@ export class TenantProvisioningService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  /**
+   * AUTO-SIGNUP: Provisiona tenant completo a partir de um signup
+   * Inclui:
+   * 1. Gera slug único baseado no nome da clínica
+   * 2. Provisiona tenant completo
+   * 3. Cria assinatura (FREE por padrão ou plano escolhido)
+   * 4. Inicia rastreamento de uso
+   * 5. Retorna dados de acesso
+   */
+  async provisionTenantFromSignup(dto: SignupDto): Promise<{
+    tenantSlug: string;
+    subscription: Subscription;
+    adminEmail: string;
+    message: string;
+  }> {
+    this.logger.log(`🚀 Iniciando auto-signup para: ${dto.nomeClinica}`);
+
+    // 1. Gerar slug único baseado no nome da clínica
+    const baseSlug = this.generateSlugFromName(dto.nomeClinica);
+    const tenantSlug = await this.generateUniqueSlug(baseSlug);
+
+    this.logger.log(`Slug gerado: ${tenantSlug}`);
+
+    // 2. Verificar se email já está em uso
+    await this.validateEmailNotInUse(dto.adminEmail);
+
+    // 3. Buscar o plano (FREE por padrão)
+    const planSlug = dto.planSlug || PlanSlug.FREE;
+    const plan = await this.plansRepository.findOne({
+      where: { slug: planSlug },
+    });
+
+    if (!plan) {
+      throw new Error(`Plano ${planSlug} não encontrado. Execute o seed de planos primeiro.`);
+    }
+
+    // 4. Provisionar tenant completo
+    await this.provisionNewTenant({
+      tenantSlug,
+      nomeClinica: dto.nomeClinica,
+      adminEmail: dto.adminEmail,
+      adminPassword: dto.adminPassword,
+      adminNomeCompleto: dto.adminNomeCompleto,
+    });
+
+    // 4.5. Registrar email no mapeamento global tenant_users
+    await this.registerEmailToTenant(dto.adminEmail, tenantSlug);
+
+    // 5. Criar assinatura
+    const subscription = await this.createInitialSubscription(tenantSlug, plan);
+
+    // 6. Iniciar rastreamento de uso
+    await this.initializeUsageTracking(tenantSlug);
+
+    this.logger.log(`✅ Auto-signup completo para ${tenantSlug}!`);
+
+    return {
+      tenantSlug,
+      subscription,
+      adminEmail: dto.adminEmail,
+      message: `Tenant ${tenantSlug} criado com sucesso! Trial de ${plan.trialDays} dias iniciado.`,
+    };
+  }
+
+  /**
+   * Gera slug a partir do nome da clínica
+   */
+  private generateSlugFromName(name: string): string {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-z0-9]+/g, '-') // Substitui não-alfanuméricos por hífen
+      .replace(/^-+|-+$/g, '') // Remove hífens do início e fim
+      .substring(0, 30); // Limita tamanho
+  }
+
+  /**
+   * Gera slug único adicionando sufixo numérico se necessário
+   */
+  private async generateUniqueSlug(baseSlug: string): Promise<string> {
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await this.tenantExists(slug)) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+
+      if (counter > 100) {
+        throw new ConflictException('Não foi possível gerar um slug único. Tente outro nome.');
+      }
+    }
+
+    return slug;
+  }
+
+  /**
+   * Valida se email já está em uso em algum tenant
+   */
+  private async validateEmailNotInUse(email: string): Promise<void> {
+    // Buscar em todos os schemas se o email existe
+    const schemas = await this.dataSource.query(`
+      SELECT schema_name
+      FROM information_schema.schemata
+      WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'public')
+      AND schema_name NOT LIKE 'pg_%'
+    `);
+
+    for (const { schema_name } of schemas) {
+      const users = await this.dataSource.query(
+        `SELECT email FROM "${schema_name}".users WHERE email = $1 LIMIT 1`,
+        [email],
+      );
+
+      if (users.length > 0) {
+        throw new ConflictException(`Email ${email} já está em uso por outro tenant.`);
+      }
+    }
+  }
+
+  /**
+   * SECURITY: Registra email no mapeamento global tenant_users
+   * Permite descoberta do tenant pelo email durante login
+   */
+  private async registerEmailToTenant(email: string, tenantSlug: string): Promise<void> {
+    this.logger.log(`Registrando email ${email} para tenant ${tenantSlug} em public.tenant_users`);
+
+    await this.dataSource.query(`
+      INSERT INTO public.tenant_users (email, tenant_slug)
+      VALUES ($1, $2)
+      ON CONFLICT (email) DO UPDATE
+      SET tenant_slug = EXCLUDED.tenant_slug,
+          updated_at = CURRENT_TIMESTAMP
+    `, [email, tenantSlug]);
+
+    this.logger.log(`✅ Email ${email} registrado com sucesso`);
+  }
+
+  /**
+   * Cria assinatura inicial para o tenant
+   */
+  private async createInitialSubscription(tenantSlug: string, plan: Plan): Promise<Subscription> {
+    const now = new Date();
+    const trialEndsAt = plan.trialDays > 0
+      ? new Date(now.getTime() + plan.trialDays * 24 * 60 * 60 * 1000)
+      : null;
+
+    const currentPeriodEnd = new Date(now);
+    currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+
+    const subscription = this.subscriptionsRepository.create({
+      tenantSlug,
+      planId: plan.id,
+      status: plan.trialDays > 0 ? SubscriptionStatus.TRIALING : SubscriptionStatus.ACTIVE,
+      billingInterval: BillingInterval.MONTHLY,
+      trialEndsAt,
+      currentPeriodStart: now,
+      currentPeriodEnd,
+      metadata: {
+        signupDate: now.toISOString(),
+        planAtSignup: plan.slug,
+      },
+    });
+
+    return this.subscriptionsRepository.save(subscription);
+  }
+
+  /**
+   * Inicializa rastreamento de uso do tenant
+   */
+  private async initializeUsageTracking(tenantSlug: string): Promise<void> {
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const usageTracking = this.usageTrackingRepository.create({
+      tenantSlug,
+      periodStart,
+      periodEnd,
+      currentUsers: 1, // Admin criado
+      currentPets: 0,
+      currentConsultas: 0,
+      currentInternacoes: 0,
+      currentExames: 0,
+      currentUnidades: 1,
+      peakUsers: 1,
+      peakPets: 0,
+    });
+
+    await this.usageTrackingRepository.save(usageTracking);
   }
 
   /**
