@@ -59,8 +59,8 @@ export default function PricingPage() {
       slug: 'starter',
       name: 'Starter',
       description: 'Para clínicas pequenas crescendo',
-      monthlyPrice: 147,
-      yearlyPrice: 147 * 10, // 2 meses grátis
+      monthlyPrice: 199,
+      yearlyPrice: 199 * 10, // 2 meses grátis
       icon: <TrendingUp className="h-6 w-6" />,
       cta: 'Começar Trial de 14 dias',
       features: [
@@ -82,8 +82,8 @@ export default function PricingPage() {
       slug: 'professional',
       name: 'Professional',
       description: 'Para clínicas completas',
-      monthlyPrice: 247,
-      yearlyPrice: 247 * 10, // 2 meses grátis
+      monthlyPrice: 299,
+      yearlyPrice: 299 * 10, // 2 meses grátis
       icon: <Sparkles className="h-6 w-6" />,
       popular: true,
       cta: 'Começar Trial de 14 dias',
@@ -106,8 +106,8 @@ export default function PricingPage() {
       slug: 'enterprise',
       name: 'Enterprise',
       description: 'Para clínicas de grande porte',
-      monthlyPrice: 497,
-      yearlyPrice: 497 * 10, // 2 meses grátis
+      monthlyPrice: 799,
+      yearlyPrice: 799 * 10, // 2 meses grátis
       icon: <Building2 className="h-6 w-6" />,
       cta: 'Começar Trial de 14 dias',
       features: [
