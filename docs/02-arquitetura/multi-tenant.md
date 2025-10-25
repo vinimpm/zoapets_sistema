@@ -122,7 +122,7 @@ CREATE INDEX idx_tenants_status ON public.tenants(status);
 ```sql
 INSERT INTO public.tenants (id, name, slug, schema_name, status, plan_id, trial_ends_at)
 VALUES
-  ('uuid-1', 'Hospital Veterinário Demo', 'demo', 'tenant_demo', 'trial', 'plan-basic', NOW() + INTERVAL '14 days'),
+  ('uuid-1', 'Hospital Veterinário Demo', 'demo', 'demo', 'trial', 'plan-basic', NOW() + INTERVAL '14 days'),
   ('uuid-2', 'Zoa Pets - São Paulo', 'zoapets-sp', 'tenant_2', 'active', 'plan-pro', NULL),
   ('uuid-3', 'Clínica VetCare - RJ', 'vetcare-rj', 'tenant_3', 'active', 'plan-enterprise', NULL);
 ```
@@ -149,7 +149,7 @@ VALUES
      "sub": "user-id",
      "email": "admin@demo.com",
      "roles": ["Veterinário"],
-     "tenantId": "tenant_demo"  ← IMPORTANTE
+     "tenantId": "demo"  ← IMPORTANTE
    }
 
 4. Retorna token para frontend
@@ -170,7 +170,7 @@ VALUES
 3. TenantMiddleware é executado:
    async use(req: Request, res: Response, next: NextFunction) {
      const user = req['user'];
-     const tenantId = user?.tenantId; // 'tenant_demo'
+     const tenantId = user?.tenantId; // 'demo'
 
      if (tenantId) {
        // Configura search_path para o schema do tenant
@@ -181,9 +181,9 @@ VALUES
    }
 
 4. Controller/Service executa query:
-   const pets = await this.petsRepository.find(); // Busca APENAS do tenant_demo
+   const pets = await this.petsRepository.find(); // Busca APENAS do demo
 
-5. PostgreSQL retorna APENAS dados do schema tenant_demo
+5. PostgreSQL retorna APENAS dados do schema demo
    - Impossível acessar dados de tenant_2 ou tenant_3
 ```
 

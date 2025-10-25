@@ -290,23 +290,23 @@ Gerencia \*\*convênios, planos de saúde pet e autorizações\*\* de procedimen
 
 
 
-\## 🌐 \*\*12. Gestão SaaS / Multiunidades\*\*
+\## 🌐 \*\*12. Gestão SaaS Multi-Tenant\*\*
 
-Permite que o Zoa Pets opere como um \*\*sistema SaaS (multi-hospital)\*\* com segurança e isolamento de dados.
+Permite que o Zoa Pets opere como um \*\*sistema SaaS (multi-hospital)\*\* com segurança e isolamento total de dados.
 
 
 
 \*\*🧩 Funcionalidades:\*\*
 
-\- 🏥 Cadastro de hospitais e unidades independentes  
+\- 🏥 Cada hospital/clínica possui um ambiente isolado (1 tenant = 1 clínica)
 
-\- 🔐 Ambientes isolados por cliente (multi-tenant)  
+\- 🔐 Isolamento completo de dados por tenant (schema-per-tenant)
 
-\- ⚙️ Painel de administração central (licenças e planos)  
+\- ⚙️ Painel de administração central (licenças e planos)
 
-\- ♻️ Atualizações automáticas e controle de versões  
+\- ♻️ Atualizações automáticas e controle de versões
 
-\- 🧱 Segurança e segregação de dados  
+\- 🧱 Segurança e segregação de dados conforme LGPD
 
 
 

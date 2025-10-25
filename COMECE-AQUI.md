@@ -37,7 +37,7 @@ Localização: `docs/`
 
 **Banco de dados:**
 - Schema `public` com tabelas SaaS (tenants, subscriptions, plans)
-- Schema `tenant_demo` completo
+- Schema `demo` completo
 - Usuário admin: `admin@demo.com` / `Admin@123`
 - 3 planos criados: Básico, Pro, Enterprise
 
@@ -127,9 +127,9 @@ Abra: **http://localhost:8080** (Adminer)
 - Database: `zoapets_dev`
 
 **Verificar:**
-- Schemas: `public` e `tenant_demo` devem existir
+- Schemas: `public` e `demo` devem existir
 - Tabela `public.tenants`: 1 registro (Hospital Demo)
-- Tabela `tenant_demo.users`: 1 registro (admin)
+- Tabela `demo.users`: 1 registro (admin)
 
 ### Passo 3: Testar Conexões
 
@@ -141,7 +141,7 @@ docker exec -it zoapets-postgres psql -U postgres -d zoapets_dev
 SELECT * FROM public.tenants;
 
 # Ver usuário admin
-SET search_path TO tenant_demo;
+SET search_path TO demo;
 SELECT * FROM users;
 ```
 

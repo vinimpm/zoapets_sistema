@@ -82,7 +82,7 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWlkIiwiZW1haWwiOiJhZG1pbkB
   "sub": "uuid-user-id",           // Subject (ID do usuário)
   "email": "admin@demo.com",
   "roles": ["Veterinário", "Administrador"],
-  "tenantId": "tenant_demo",       // CRÍTICO para multi-tenancy
+  "tenantId": "demo",       // CRÍTICO para multi-tenancy
   "iat": 1697123456,               // Issued At (timestamp)
   "exp": 1697209856                // Expiration (timestamp)
 }

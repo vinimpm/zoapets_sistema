@@ -244,11 +244,11 @@ CREATE TABLE public.tenants (
 
 -- Criar primeiro tenant para desenvolvimento
 INSERT INTO public.tenants (nome, slug, cnpj, schema_name)
-VALUES ('Hospital Demo', 'hospital-demo', '00.000.000/0001-00', 'tenant_demo');
+VALUES ('Hospital Demo', 'hospital-demo', '00.000.000/0001-00', 'demo');
 
-CREATE SCHEMA tenant_demo;
+CREATE SCHEMA demo;
 
--- Copiar tabelas do DER para tenant_demo
+-- Copiar tabelas do DER para demo
 -- (Ver docs/03-banco-de-dados/der-completo.md)
 ```
 
